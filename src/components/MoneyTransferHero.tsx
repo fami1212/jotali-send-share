@@ -23,8 +23,8 @@ const MoneyTransferHero = () => {
             <span className="text-2xl font-bold text-white">TransferApp</span>
           </div>
           
-          <Button variant="outline" className="text-white border-white/30 bg-white/10 hover:bg-white/20">
-            Se connecter
+          <Button asChild variant="outline" className="text-white border-white/30 bg-white/10 hover:bg-white/20">
+            <a href="/auth">Se connecter</a>
           </Button>
         </header>
 
@@ -40,8 +40,8 @@ const MoneyTransferHero = () => {
             Des transferts rapides, sécurisés et au meilleur taux entre le CFA et le Dirham marocain
           </p>
           
-          <Button size="lg" className="bg-white text-primary hover:bg-white/90 shadow-strong">
-            Commencer un transfert
+          <Button asChild size="lg" className="bg-white text-primary hover:bg-white/90 shadow-strong">
+            <a href="/auth">Commencer un transfert</a>
           </Button>
         </div>
 
