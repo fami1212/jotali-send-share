@@ -14,13 +14,179 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      exchange_rates: {
+        Row: {
+          created_at: string
+          from_currency: string
+          id: string
+          rate: number
+          to_currency: string
+        }
+        Insert: {
+          created_at?: string
+          from_currency: string
+          id?: string
+          rate: number
+          to_currency: string
+        }
+        Update: {
+          created_at?: string
+          from_currency?: string
+          id?: string
+          rate?: number
+          to_currency?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          country: string | null
+          created_at: string
+          first_name: string | null
+          id: string
+          is_verified: boolean | null
+          last_name: string | null
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          country?: string | null
+          created_at?: string
+          first_name?: string | null
+          id?: string
+          is_verified?: boolean | null
+          last_name?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          country?: string | null
+          created_at?: string
+          first_name?: string | null
+          id?: string
+          is_verified?: boolean | null
+          last_name?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      recipients: {
+        Row: {
+          bank_account: string | null
+          country: string
+          created_at: string
+          id: string
+          name: string
+          phone: string
+          user_id: string
+          wave_number: string | null
+        }
+        Insert: {
+          bank_account?: string | null
+          country: string
+          created_at?: string
+          id?: string
+          name: string
+          phone: string
+          user_id: string
+          wave_number?: string | null
+        }
+        Update: {
+          bank_account?: string | null
+          country?: string
+          created_at?: string
+          id?: string
+          name?: string
+          phone?: string
+          user_id?: string
+          wave_number?: string | null
+        }
+        Relationships: []
+      }
+      transfers: {
+        Row: {
+          amount: number
+          completed_at: string | null
+          converted_amount: number
+          created_at: string
+          exchange_rate: number
+          fees: number | null
+          from_currency: string
+          id: string
+          notes: string | null
+          recipient_id: string | null
+          reference_number: string
+          status: string
+          to_currency: string
+          total_amount: number
+          transfer_method: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          completed_at?: string | null
+          converted_amount: number
+          created_at?: string
+          exchange_rate: number
+          fees?: number | null
+          from_currency: string
+          id?: string
+          notes?: string | null
+          recipient_id?: string | null
+          reference_number: string
+          status?: string
+          to_currency: string
+          total_amount: number
+          transfer_method: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          completed_at?: string | null
+          converted_amount?: number
+          created_at?: string
+          exchange_rate?: number
+          fees?: number | null
+          from_currency?: string
+          id?: string
+          notes?: string | null
+          recipient_id?: string | null
+          reference_number?: string
+          status?: string
+          to_currency?: string
+          total_amount?: number
+          transfer_method?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transfers_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "recipients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_reference_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
