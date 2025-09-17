@@ -17,6 +17,7 @@ interface Transfer {
   to_currency: string;
   converted_amount: number;
   status: string;
+  transfer_type?: string;
   transfer_method: string;
   created_at: string;
   completed_at?: string;
@@ -87,22 +88,28 @@ const History = () => {
     setFilteredTransfers(filtered);
   };
 
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      pending: { label: 'En attente', variant: 'secondary' as const },
-      processing: { label: 'En cours', variant: 'default' as const },
-      completed: { label: 'Terminé', variant: 'default' as const },
-      failed: { label: 'Échoué', variant: 'destructive' as const },
-      cancelled: { label: 'Annulé', variant: 'outline' as const },
-    };
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending': return 'bg-yellow-500/10 text-yellow-500';
+      case 'awaiting_admin': return 'bg-blue-500/10 text-blue-500';
+      case 'approved': return 'bg-green-500/10 text-green-500';
+      case 'completed': return 'bg-green-600/10 text-green-600';
+      case 'rejected': return 'bg-red-500/10 text-red-500';
+      case 'cancelled': return 'bg-gray-500/10 text-gray-500';
+      default: return 'bg-gray-500/10 text-gray-500';
+    }
+  };
 
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
-    
-    return (
-      <Badge variant={config.variant}>
-        {config.label}
-      </Badge>
-    );
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'pending': return 'En attente';
+      case 'awaiting_admin': return 'Attente admin';
+      case 'approved': return 'Approuvé';
+      case 'completed': return 'Terminé';
+      case 'rejected': return 'Rejeté';
+      case 'cancelled': return 'Annulé';
+      default: return status;
+    }
   };
 
   const formatCurrency = (amount: number, currency: string) => {
@@ -171,9 +178,10 @@ const History = () => {
               <SelectContent>
                 <SelectItem value="all">Tous les statuts</SelectItem>
                 <SelectItem value="pending">En attente</SelectItem>
-                <SelectItem value="processing">En cours</SelectItem>
+                <SelectItem value="awaiting_admin">Attente admin</SelectItem>
+                <SelectItem value="approved">Approuvé</SelectItem>
                 <SelectItem value="completed">Terminé</SelectItem>
-                <SelectItem value="failed">Échoué</SelectItem>
+                <SelectItem value="rejected">Rejeté</SelectItem>
                 <SelectItem value="cancelled">Annulé</SelectItem>
               </SelectContent>
             </Select>
@@ -202,7 +210,9 @@ const History = () => {
                         <h3 className="font-semibold text-foreground">
                           {transfer.reference_number}
                         </h3>
-                        {getStatusBadge(transfer.status)}
+                        <Badge className={getStatusColor(transfer.status)}>
+                          {getStatusText(transfer.status)}
+                        </Badge>
                       </div>
                       
                       <div className="flex items-center space-x-4 text-sm text-muted-foreground">

@@ -1,20 +1,42 @@
-import { ArrowRightLeft, User, LogOut, Menu } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowRightLeft, User, LogOut, Menu, X, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { useState } from 'react';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { NotificationCenter } from './NotificationCenter';
 
 const Navbar = () => {
   const { user, signOut } = useAuth();
-  const [open, setOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    checkAdminStatus();
+  }, [user]);
+
+  const checkAdminStatus = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const { data } = await supabase
+        .from('admin_users')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+      
+      setIsAdmin(!!data);
+    } catch (error) {
+      setIsAdmin(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/auth');
+  };
 
   const navigation = [
     { name: 'Tableau de bord', href: '/dashboard' },
@@ -50,62 +72,85 @@ const Navbar = () => {
           <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
             <ArrowRightLeft className="w-5 h-5 text-white" />
           </div>
-          <span className="text-xl font-bold text-foreground">TransferApp</span>
+          <span className="text-xl font-bold text-foreground">Koligo</span>
         </Link>
 
         {/* Desktop Navigation */}
         <NavLinks />
 
-        {/* User Menu */}
+        {/* User Menu & Notifications */}
         <div className="flex items-center space-x-4">
           {user && (
             <>
-              {/* Mobile menu trigger */}
-              <Sheet open={open} onOpenChange={setOpen}>
-                <SheetTrigger asChild>
-                  <Button variant="ghost" size="sm" className="md:hidden">
-                    <Menu className="w-5 h-5" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="left" className="w-72">
-                  <div className="py-6">
-                    <div className="flex items-center space-x-2 mb-8">
-                      <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                        <ArrowRightLeft className="w-5 h-5 text-white" />
-                      </div>
-                      <span className="text-xl font-bold">TransferApp</span>
-                    </div>
-                    <NavLinks mobile onClose={() => setOpen(false)} />
-                  </div>
-                </SheetContent>
-              </Sheet>
-
-              {/* User dropdown */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="flex items-center space-x-2">
-                    <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
-                      <User className="w-4 h-4" />
-                    </div>
-                    <span className="hidden sm:block">{user.email}</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem asChild>
-                    <Link to="/profile">
-                      <User className="w-4 h-4 mr-2" />
-                      Mon profil
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={signOut}>
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Se déconnecter
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <NotificationCenter />
+              <span className="text-sm text-muted-foreground hidden md:block">
+                Bonjour, {user.email}
+              </span>
+              
+              {/* Mobile Menu */}
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="md:hidden"
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+              >
+                {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </Button>
             </>
           )}
         </div>
+
+        {/* Mobile Menu Panel */}
+        {isMenuOpen && (
+          <div className="absolute top-16 left-0 right-0 bg-white border-b shadow-lg md:hidden z-50">
+            <div className="container mx-auto px-4 py-4 space-y-4">
+              {navigation.map((item) => (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  onClick={() => setIsMenuOpen(false)}
+                  className="block px-3 py-2 text-sm hover:bg-accent rounded-md"
+                >
+                  {item.name}
+                </Link>
+              ))}
+              
+              <hr className="my-4" />
+              
+              <Link 
+                to="/profile" 
+                className="flex items-center space-x-2 px-3 py-2 text-sm hover:bg-accent rounded-md"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <User className="w-4 h-4" />
+                <span>Profil</span>
+              </Link>
+              
+              {isAdmin && (
+                <Link 
+                  to="/admin" 
+                  className="flex items-center space-x-2 px-3 py-2 text-sm hover:bg-accent rounded-md text-orange-600"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <Shield className="w-4 h-4" />
+                  <span>Administration</span>
+                </Link>
+              )}
+              
+              <Button 
+                variant="ghost" 
+                className="flex items-center space-x-2 w-full justify-start px-3 py-2 text-sm hover:bg-accent"
+                onClick={() => {
+                  handleLogout();
+                  setIsMenuOpen(false);
+                }}
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Déconnexion</span>
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </header>
   );

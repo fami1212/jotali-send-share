@@ -31,11 +31,13 @@ const Transfer = () => {
   const [fromCurrency, setFromCurrency] = useState('CFA');
   const [toCurrency, setToCurrency] = useState('MAD');
   const [convertedAmount, setConvertedAmount] = useState('');
-  const [exchangeRate, setExchangeRate] = useState(0.00165);
+  const [exchangeRate, setExchangeRate] = useState(60);
+  const [transferType, setTransferType] = useState('transfer');
   const [transferMethod, setTransferMethod] = useState('bank');
   const [selectedRecipient, setSelectedRecipient] = useState('');
   const [recipients, setRecipients] = useState<Recipient[]>([]);
   const [notes, setNotes] = useState('');
+  const [proofImage, setProofImage] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -77,7 +79,7 @@ const Transfer = () => {
       if (data) {
         const rate = data.find(r => 
           r.from_currency === fromCurrency && r.to_currency === toCurrency
-        )?.rate || 0.00165;
+        )?.rate || (fromCurrency === 'CFA' ? 0.0166667 : 60);
         
         setExchangeRate(rate);
       }
@@ -93,9 +95,27 @@ const Transfer = () => {
     setFromCurrency(newFromCurrency);
     setToCurrency(newToCurrency);
     
-    // Update exchange rate
-    const newRate = newFromCurrency === 'CFA' ? 0.00165 : 606.06;
+    // Update exchange rate  
+    const newRate = newFromCurrency === 'CFA' ? 0.0166667 : 60;
     setExchangeRate(newRate);
+  };
+
+  const uploadProofImage = async (transferId: string): Promise<string | null> => {
+    if (!proofImage || !user?.id) return null;
+
+    const fileExt = proofImage.name.split('.').pop();
+    const fileName = `${user.id}/${transferId}.${fileExt}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('transfer-proofs')
+      .upload(fileName, proofImage);
+
+    if (uploadError) {
+      console.error('Error uploading proof:', uploadError);
+      return null;
+    }
+
+    return fileName;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -112,8 +132,17 @@ const Transfer = () => {
 
     if (!amount || parseFloat(amount) <= 0) {
       toast({
-        title: "Erreur",
+        title: "Erreur", 
         description: "Veuillez entrer un montant valide",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (transferType === 'send' && !proofImage) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez ajouter une preuve de paiement pour un envoi",
         variant: "destructive",
       });
       return;
@@ -136,22 +165,38 @@ const Transfer = () => {
         fees: 0,
         total_amount: parseFloat(amount),
         transfer_method: transferMethod,
+        transfer_type: transferType,
         reference_number: refData || `TR${Date.now()}`,
         notes,
-        status: 'pending'
+        status: transferType === 'send' ? 'awaiting_admin' : 'pending'
       };
 
-      const { error } = await supabase
+      const { data: transfer, error } = await supabase
         .from('transfers')
-        .insert([transferData]);
+        .insert([transferData])
+        .select()
+        .single();
 
       if (error) {
         throw error;
       }
 
+      // Upload proof image if provided
+      if (proofImage && transfer) {
+        const proofUrl = await uploadProofImage(transfer.id);
+        if (proofUrl) {
+          await supabase
+            .from('transfers')
+            .update({ proof_image_url: proofUrl })
+            .eq('id', transfer.id);
+        }
+      }
+
       toast({
-        title: "Transfert créé",
-        description: "Votre transfert a été créé avec succès",
+        title: transferType === 'send' ? "Envoi créé" : "Transfert créé",
+        description: transferType === 'send' 
+          ? "Votre envoi est en attente de validation par l'administrateur"
+          : "Votre demande de transfert a été créée avec succès",
       });
 
       navigate('/history');
@@ -186,6 +231,37 @@ const Transfer = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Type d'opération */}
+            <Card className="p-6">
+              <h2 className="text-xl font-semibold mb-4">Type d'opération</h2>
+              
+              <RadioGroup value={transferType} onValueChange={setTransferType}>
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2 p-3 border rounded-lg">
+                    <RadioGroupItem value="transfer" id="transfer" />
+                    <Label htmlFor="transfer" className="flex items-center space-x-2 cursor-pointer flex-1">
+                      <ArrowRightLeft className="w-5 h-5 text-primary" />
+                      <div>
+                        <p className="font-medium">Demande de transfert</p>
+                        <p className="text-sm text-muted-foreground">Faire une demande que l'admin validera</p>
+                      </div>
+                    </Label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2 p-3 border rounded-lg">
+                    <RadioGroupItem value="send" id="send" />
+                    <Label htmlFor="send" className="flex items-center space-x-2 cursor-pointer flex-1">
+                      <Plus className="w-5 h-5 text-primary" />
+                      <div>
+                        <p className="font-medium">Envoi direct</p>
+                        <p className="text-sm text-muted-foreground">J'ai déjà effectué le transfert</p>
+                      </div>
+                    </Label>
+                  </div>
+                </div>
+              </RadioGroup>
+            </Card>
+
             {/* Montant */}
             <Card className="p-6">
               <h2 className="text-xl font-semibold mb-4">Montant du transfert</h2>
@@ -331,6 +407,29 @@ const Transfer = () => {
               </RadioGroup>
             </Card>
 
+            {/* Preuve de paiement */}
+            {transferType === 'send' && (
+              <Card className="p-6">
+                <h2 className="text-xl font-semibold mb-4">Preuve de paiement *</h2>
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Veuillez télécharger une capture d'écran ou photo de votre virement bancaire
+                  </p>
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setProofImage(e.target.files?.[0] || null)}
+                    className="cursor-pointer"
+                  />
+                  {proofImage && (
+                    <p className="text-sm text-success">
+                      Fichier sélectionné: {proofImage.name}
+                    </p>
+                  )}
+                </div>
+              </Card>
+            )}
+
             {/* Notes */}
             <Card className="p-6">
               <h2 className="text-xl font-semibold mb-4">Notes (optionnel)</h2>
@@ -348,7 +447,9 @@ const Transfer = () => {
               size="lg"
               disabled={isLoading}
             >
-              {isLoading ? "Traitement..." : "Confirmer le transfert"}
+              {isLoading ? "Traitement..." : (
+                transferType === 'send' ? "Soumettre l'envoi" : "Créer la demande"
+              )}
             </Button>
           </form>
         </div>

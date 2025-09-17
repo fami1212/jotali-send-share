@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_users: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          role: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          role?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          role?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       exchange_rates: {
         Row: {
           created_at: string
@@ -112,6 +139,7 @@ export type Database = {
       }
       transfers: {
         Row: {
+          admin_notes: string | null
           amount: number
           completed_at: string | null
           converted_amount: number
@@ -121,16 +149,19 @@ export type Database = {
           from_currency: string
           id: string
           notes: string | null
+          proof_image_url: string | null
           recipient_id: string | null
           reference_number: string
           status: string
           to_currency: string
           total_amount: number
           transfer_method: string
+          transfer_type: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          admin_notes?: string | null
           amount: number
           completed_at?: string | null
           converted_amount: number
@@ -140,16 +171,19 @@ export type Database = {
           from_currency: string
           id?: string
           notes?: string | null
+          proof_image_url?: string | null
           recipient_id?: string | null
           reference_number: string
           status?: string
           to_currency: string
           total_amount: number
           transfer_method: string
+          transfer_type?: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          admin_notes?: string | null
           amount?: number
           completed_at?: string | null
           converted_amount?: number
@@ -159,12 +193,14 @@ export type Database = {
           from_currency?: string
           id?: string
           notes?: string | null
+          proof_image_url?: string | null
           recipient_id?: string | null
           reference_number?: string
           status?: string
           to_currency?: string
           total_amount?: number
           transfer_method?: string
+          transfer_type?: string
           updated_at?: string
           user_id?: string
         }

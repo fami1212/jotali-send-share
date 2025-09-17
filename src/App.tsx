@@ -12,6 +12,7 @@ import Transfer from "./pages/Transfer";
 import History from "./pages/History";
 import Recipients from "./pages/Recipients";
 import Profile from "./pages/Profile";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -49,6 +50,11 @@ const App = () => (
             <Route path="/profile" element={
               <ProtectedRoute>
                 <Profile />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin" element={
+              <ProtectedRoute>
+                <Admin />
               </ProtectedRoute>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
