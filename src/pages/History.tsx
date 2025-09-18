@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import Navbar from '@/components/Navbar';
+import { Link } from 'react-router-dom';
 
 interface Transfer {
   id: string;
@@ -36,7 +37,9 @@ const History = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadTransfers();
+    if (user) {
+      loadTransfers();
+    }
   }, [user]);
 
   useEffect(() => {
@@ -44,10 +47,13 @@ const History = () => {
   }, [transfers, searchTerm, statusFilter]);
 
   const loadTransfers = async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('transfers')
         .select(`
           *,
@@ -59,6 +65,12 @@ const History = () => {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+
+      console.log('Transfers loaded:', data);
       if (data) {
         setTransfers(data);
       }
@@ -144,11 +156,25 @@ const History = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
-      
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
+    <div className="min-h-screen bg-gradient-hero">
+      {/* Mobile-first design */}
+      <div className="container mx-auto px-4 py-6 max-w-md md:max-w-4xl">
+        {/* Mobile Header */}
+        <div className="md:hidden mb-6">
+          <h1 className="text-2xl font-bold text-white mb-2">
+            Historique
+          </h1>
+          <p className="text-white/70">
+            Consultez vos transferts
+          </p>
+        </div>
+
+        {/* Desktop Header */}
+        <div className="hidden md:block">
+          <Navbar />
+        </div>
+        
+        <div className="hidden md:block mb-8 mt-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">
             Historique des transferts
           </h1>
@@ -158,20 +184,20 @@ const History = () => {
         </div>
 
         {/* Filters */}
-        <Card className="p-6 mb-6">
-          <div className="grid md:grid-cols-3 gap-4">
+        <Card className="bg-white/90 backdrop-blur-sm p-4 rounded-2xl shadow-medium mb-6">
+          <div className="space-y-4 md:space-y-0 md:grid md:grid-cols-3 md:gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Rechercher par référence ou bénéficiaire"
+                placeholder="Rechercher par référence..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="pl-10 rounded-xl"
               />
             </div>
             
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger>
+              <SelectTrigger className="rounded-xl">
                 <Filter className="w-4 h-4 mr-2" />
                 <SelectValue placeholder="Filtrer par statut" />
               </SelectTrigger>
@@ -187,52 +213,53 @@ const History = () => {
             </Select>
 
             <div className="flex items-center justify-center">
-              <span className="text-sm text-muted-foreground">
-                {filteredTransfers.length} transfert(s) trouvé(s)
-              </span>
+              <Badge variant="outline" className="bg-white/50">
+                {filteredTransfers.length} transfert(s)
+              </Badge>
             </div>
           </div>
         </Card>
 
         {/* Transfers List */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           {filteredTransfers.length > 0 ? (
             filteredTransfers.map((transfer) => (
-              <Card key={transfer.id} className="p-6">
+              <Card key={transfer.id} className="bg-white/90 backdrop-blur-sm p-4 rounded-2xl shadow-medium">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center">
-                      <ArrowRightLeft className="w-6 h-6 text-primary" />
+                  <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 bg-gradient-primary rounded-2xl flex items-center justify-center shadow-soft">
+                      <ArrowRightLeft className="w-5 h-5 text-white" />
                     </div>
                     
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center space-x-2 mb-1">
-                        <h3 className="font-semibold text-foreground">
+                        <h3 className="font-semibold text-foreground text-sm truncate">
                           {transfer.reference_number}
                         </h3>
-                        <Badge className={getStatusColor(transfer.status)}>
+                        <Badge className={`text-xs ${getStatusColor(transfer.status)}`}>
                           {getStatusText(transfer.status)}
                         </Badge>
                       </div>
                       
-                      <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                        <span>
+                      <div className="space-y-1 text-xs text-muted-foreground">
+                        <div>
                           {formatCurrency(transfer.amount, transfer.from_currency)} → {formatCurrency(transfer.converted_amount, transfer.to_currency)}
-                        </span>
-                        <span>•</span>
-                        <span>{transfer.recipients?.name}</span>
-                        <span>•</span>
-                        <span className="capitalize">{transfer.transfer_method === 'bank' ? 'Virement' : 'Wave'}</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <span className="truncate">{transfer.recipients?.name}</span>
+                          <span>•</span>
+                          <span className="capitalize">{transfer.transfer_method === 'bank' ? 'Virement' : 'Wave'}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
                   
                   <div className="text-right">
-                    <div className="text-sm text-muted-foreground mb-1">
+                    <div className="text-xs text-muted-foreground mb-2">
                       {formatDate(transfer.created_at)}
                     </div>
-                    <Button variant="outline" size="sm">
-                      <Eye className="w-4 h-4 mr-2" />
+                    <Button variant="ghost" size="sm" className="text-xs h-8 px-2">
+                      <Eye className="w-3 h-3 mr-1" />
                       Détails
                     </Button>
                   </div>
@@ -240,23 +267,26 @@ const History = () => {
               </Card>
             ))
           ) : (
-            <Card className="p-12 text-center">
-              <ArrowRightLeft className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-foreground mb-2">
+            <Card className="bg-white/90 backdrop-blur-sm p-8 rounded-2xl shadow-medium text-center">
+              <ArrowRightLeft className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-foreground mb-2">
                 Aucun transfert trouvé
               </h3>
-              <p className="text-muted-foreground mb-6">
+              <p className="text-muted-foreground mb-6 text-sm">
                 {searchTerm || statusFilter !== 'all' 
                   ? "Essayez de modifier vos filtres de recherche"
                   : "Vous n'avez pas encore effectué de transfert"
                 }
               </p>
-              <Button asChild>
-                <a href="/transfer">Effectuer un transfert</a>
+              <Button asChild className="bg-gradient-primary hover:opacity-90">
+                <Link to="/transfer">Effectuer un transfert</Link>
               </Button>
             </Card>
           )}
         </div>
+
+        {/* Mobile Bottom Spacing */}
+        <div className="h-20 md:h-0"></div>
       </div>
     </div>
   );
