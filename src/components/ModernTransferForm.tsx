@@ -32,7 +32,7 @@ const ModernTransferForm = () => {
   const [toCurrency, setToCurrency] = useState('MAD');
   const [convertedAmount, setConvertedAmount] = useState('');
   const [exchangeRate, setExchangeRate] = useState(60);
-  const [transferType, setTransferType] = useState('transfer');
+  const [transferType, setTransferType] = useState('withdraw');
   const [transferMethod, setTransferMethod] = useState('bank');
   const [selectedRecipient, setSelectedRecipient] = useState('');
   const [recipients, setRecipients] = useState<Recipient[]>([]);
@@ -121,7 +121,7 @@ const ModernTransferForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedRecipient) {
+    if (transferType === 'send' && !selectedRecipient) {
       toast({
         title: "Erreur",
         description: "Veuillez sélectionner un bénéficiaire",
@@ -155,7 +155,7 @@ const ModernTransferForm = () => {
       
       const transferData = {
         user_id: user?.id,
-        recipient_id: selectedRecipient,
+        recipient_id: transferType === 'send' ? selectedRecipient : null,
         amount: parseFloat(amount),
         from_currency: fromCurrency,
         to_currency: toCurrency,
@@ -167,7 +167,7 @@ const ModernTransferForm = () => {
         transfer_type: transferType,
         reference_number: refData || `TR${Date.now()}`,
         notes,
-        status: transferType === 'send' ? 'awaiting_admin' : 'pending'
+        status: 'pending'
       };
 
       const { data: transfer, error } = await supabase
@@ -191,10 +191,10 @@ const ModernTransferForm = () => {
       }
 
       toast({
-        title: transferType === 'send' ? "Envoi créé" : "Transfert créé",
+        title: transferType === 'send' ? "Envoi créé" : "Demande de retrait créée",
         description: transferType === 'send' 
-          ? "Votre envoi est en attente de validation par l'administrateur"
-          : "Votre demande de transfert a été créée avec succès",
+          ? "Votre envoi vers le bénéficiaire a été créé avec succès"
+          : "Votre demande de retrait/échange est en attente de validation",
       });
 
       navigate('/history');
@@ -247,31 +247,31 @@ const ModernTransferForm = () => {
                 
                 <RadioGroup value={transferType} onValueChange={setTransferType}>
                   <div className="space-y-3">
-                    <div className="flex items-center space-x-3 p-4 border-2 rounded-2xl border-purple/20 hover:border-purple transition-colors">
-                      <RadioGroupItem value="transfer" id="transfer" />
-                      <Label htmlFor="transfer" className="flex items-center space-x-3 cursor-pointer flex-1">
-                        <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center">
-                          <ArrowRightLeft className="w-5 h-5 text-white" />
-                        </div>
-                        <div>
-                          <p className="font-medium">Demande de retrait</p>
-                          <p className="text-sm text-muted-foreground">Faire une demande que l'admin validera</p>
-                        </div>
-                      </Label>
-                    </div>
-                    
-                    <div className="flex items-center space-x-3 p-4 border-2 rounded-2xl border-blue/20 hover:border-blue transition-colors">
-                      <RadioGroupItem value="send" id="send" />
-                      <Label htmlFor="send" className="flex items-center space-x-3 cursor-pointer flex-1">
-                        <div className="w-10 h-10 bg-gradient-secondary rounded-xl flex items-center justify-center">
-                          <Plus className="w-5 h-5 text-white" />
-                        </div>
-                        <div>
-                          <p className="font-medium">Envoi direct</p>
-                          <p className="text-sm text-muted-foreground">J'ai déjà effectué le transfert</p>
-                        </div>
-                      </Label>
-                    </div>
+                     <div className="flex items-center space-x-3 p-4 border-2 rounded-2xl border-primary/30 hover:border-primary transition-colors">
+                       <RadioGroupItem value="withdraw" id="withdraw" />
+                       <Label htmlFor="withdraw" className="flex items-center space-x-3 cursor-pointer flex-1">
+                         <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center">
+                           <ArrowRightLeft className="w-5 h-5 text-white" />
+                         </div>
+                         <div>
+                           <p className="font-medium">Retrait / Échange</p>
+                           <p className="text-sm text-muted-foreground">Échanger mes CFA en Dirham (ou inverse)</p>
+                         </div>
+                       </Label>
+                     </div>
+                     
+                     <div className="flex items-center space-x-3 p-4 border-2 rounded-2xl border-secondary/30 hover:border-secondary transition-colors">
+                       <RadioGroupItem value="send" id="send" />
+                       <Label htmlFor="send" className="flex items-center space-x-3 cursor-pointer flex-1">
+                         <div className="w-10 h-10 bg-gradient-secondary rounded-xl flex items-center justify-center">
+                           <Plus className="w-5 h-5 text-white" />
+                         </div>
+                         <div>
+                           <p className="font-medium">Envoi vers bénéficiaire</p>
+                           <p className="text-sm text-muted-foreground">Transférer vers un contact</p>
+                         </div>
+                       </Label>
+                     </div>
                   </div>
                 </RadioGroup>
               </Card>
@@ -368,31 +368,45 @@ const ModernTransferForm = () => {
                 </div>
               </Card>
 
-              {/* Recipient Card */}
-              <Card className="bg-white/90 backdrop-blur-sm p-4 rounded-2xl shadow-medium">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-lg font-semibold">Bénéficiaire</h2>
-                  <Button asChild variant="outline" size="sm" className="rounded-xl">
-                    <a href="/recipients">
-                      <Plus className="w-4 h-4 mr-1" />
-                      Ajouter
-                    </a>
-                  </Button>
-                </div>
+              {/* Recipient Card - Only for send type */}
+              {transferType === 'send' && (
+                <Card className="bg-white/90 backdrop-blur-sm p-4 rounded-2xl shadow-medium">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-lg font-semibold">Bénéficiaire</h2>
+                    <Button asChild variant="outline" size="sm" className="rounded-xl">
+                      <a href="/recipients">
+                        <Plus className="w-4 h-4 mr-1" />
+                        Ajouter
+                      </a>
+                    </Button>
+                  </div>
 
-                <Select value={selectedRecipient} onValueChange={setSelectedRecipient}>
-                  <SelectTrigger className="w-full h-12 rounded-xl">
-                    <SelectValue placeholder="Choisir un bénéficiaire" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {recipients.map((recipient) => (
-                      <SelectItem key={recipient.id} value={recipient.id}>
-                        {recipient.name} - {recipient.phone}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Card>
+                  <Select value={selectedRecipient} onValueChange={setSelectedRecipient}>
+                    <SelectTrigger className="w-full h-12 rounded-xl">
+                      <SelectValue placeholder="Choisir un bénéficiaire" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {recipients.map((recipient) => (
+                        <SelectItem key={recipient.id} value={recipient.id}>
+                          {recipient.name} - {recipient.phone}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Card>
+              )}
+
+              {/* Info Card for Withdraw */}
+              {transferType === 'withdraw' && (
+                <Card className="bg-white/90 backdrop-blur-sm p-4 rounded-2xl shadow-medium">
+                  <h2 className="text-lg font-semibold mb-3 text-center">Retrait personnel</h2>
+                  <div className="text-center text-muted-foreground">
+                    <p className="text-sm">
+                      Cette demande sera traitée par notre équipe. Vous recevrez une notification une fois validée.
+                    </p>
+                  </div>
+                </Card>
+              )}
 
               {/* Method Card */}
               <Card className="bg-white/90 backdrop-blur-sm p-4 rounded-2xl shadow-medium">

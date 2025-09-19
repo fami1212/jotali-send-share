@@ -80,15 +80,15 @@ const ModernDashboard = () => {
   const services = [
     {
       icon: ArrowUpRight,
-      title: 'Transfert',
-      subtitle: 'Envoyer de l\'argent',
+      title: 'Nouveau transfert',
+      subtitle: 'Envoyer ou retirer',
       color: 'bg-gradient-primary',
       link: '/transfer'
     },
     {
       icon: History,
       title: 'Historique',
-      subtitle: 'Voir transactions',
+      subtitle: 'Mes transactions',
       color: 'bg-gradient-secondary',
       link: '/history'
     },
@@ -100,24 +100,10 @@ const ModernDashboard = () => {
       link: '/recipients'
     },
     {
-      icon: CreditCard,
-      title: 'Ma carte',
-      subtitle: 'Détails compte',
-      color: 'bg-purple',
-      link: '/profile'
-    },
-    {
-      icon: TrendingUp,
-      title: 'Devise',
-      subtitle: 'Taux de change',
-      color: 'bg-blue',
-      link: '#'
-    },
-    {
       icon: Settings,
-      title: 'Paramètres',
-      subtitle: 'Configuration',
-      color: 'bg-muted',
+      title: 'Profil',
+      subtitle: 'Mon compte',
+      color: 'bg-gradient-hero',
       link: '/profile'
     }
   ];
@@ -189,20 +175,20 @@ const ModernDashboard = () => {
         </Card>
 
         {/* Services Grid */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-2 gap-4 mb-6">
           {services.map((service, index) => (
             <Link 
               key={index}
               to={service.link}
               className="block transform hover:scale-105 transition-transform"
             >
-              <div className="text-center">
-                <div className={`w-16 h-16 ${service.color} rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-medium`}>
-                  <service.icon className="w-7 h-7 text-white" />
+              <Card className="bg-white/90 backdrop-blur-sm p-4 rounded-2xl shadow-medium text-center">
+                <div className={`w-12 h-12 ${service.color} rounded-xl flex items-center justify-center mx-auto mb-3 shadow-medium`}>
+                  <service.icon className="w-6 h-6 text-white" />
                 </div>
-                <p className="text-xs font-medium text-white mb-1">{service.title}</p>
-                <p className="text-xs text-white/70">{service.subtitle}</p>
-              </div>
+                <p className="text-sm font-semibold text-foreground mb-1">{service.title}</p>
+                <p className="text-xs text-muted-foreground">{service.subtitle}</p>
+              </Card>
             </Link>
           ))}
         </div>

@@ -1,11 +1,41 @@
+import { useState, useEffect } from 'react';
 import { ArrowRightLeft, Shield, Zap, User, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const { user } = useAuth();
+  const [exchangeRate, setExchangeRate] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadExchangeRates();
+  }, []);
+
+  const loadExchangeRates = async () => {
+    try {
+      const { data } = await supabase
+        .from('exchange_rates')
+        .select('*')
+        .eq('from_currency', 'CFA')
+        .eq('to_currency', 'MAD')
+        .single();
+
+      if (data) {
+        setExchangeRate(data.rate * 1000); // Pour 1000 CFA
+      } else {
+        setExchangeRate(16.50); // Valeur par défaut
+      }
+    } catch (error) {
+      console.error('Error loading exchange rates:', error);
+      setExchangeRate(16.50); // Valeur par défaut
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (user) {
     window.location.href = '/dashboard';
@@ -44,25 +74,34 @@ const Index = () => {
         {/* Exchange Rate Card */}
         <Card className="bg-white/90 backdrop-blur-sm p-6 rounded-3xl shadow-strong mb-8">
           <div className="text-center">
-            <div className="flex items-center justify-between mb-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-foreground">1 000</div>
-                <div className="text-muted-foreground text-sm">CFA</div>
+            {loading ? (
+              <div className="flex items-center justify-center py-4">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                <span className="ml-2 text-muted-foreground">Chargement du taux...</span>
               </div>
-              
-              <div className="w-10 h-10 bg-gradient-primary rounded-full flex items-center justify-center">
-                <ArrowRightLeft className="w-5 h-5 text-white" />
-              </div>
-              
-              <div className="text-center">
-                <div className="text-2xl font-bold text-primary">16.50</div>
-                <div className="text-muted-foreground text-sm">MAD</div>
-              </div>
-            </div>
-            
-            <div className="text-sm text-muted-foreground">
-              Taux mis à jour il y a 2 min
-            </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-foreground">1 000</div>
+                    <div className="text-muted-foreground text-sm">CFA</div>
+                  </div>
+                  
+                  <div className="w-10 h-10 bg-gradient-primary rounded-full flex items-center justify-center">
+                    <ArrowRightLeft className="w-5 h-5 text-white" />
+                  </div>
+                  
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-primary">{exchangeRate?.toFixed(2)}</div>
+                    <div className="text-muted-foreground text-sm">MAD</div>
+                  </div>
+                </div>
+                
+                <div className="text-sm text-muted-foreground">
+                  Taux en temps réel
+                </div>
+              </>
+            )}
           </div>
         </Card>
 

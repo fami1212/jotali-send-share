@@ -27,12 +27,14 @@ const Profile = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   // Form state
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
   const [country, setCountry] = useState('');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
   useEffect(() => {
     loadProfile();
@@ -102,6 +104,64 @@ const Profile = () => {
     setIsLoading(false);
   };
 
+  const uploadAvatar = async (file: File) => {
+    if (!user) return null;
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${user.id}/avatar.${fileExt}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(fileName, file, { upsert: true });
+
+    if (uploadError) {
+      console.error('Error uploading avatar:', uploadError);
+      return null;
+    }
+
+    const { data } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(fileName);
+
+    return data.publicUrl;
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    setIsUploadingAvatar(true);
+
+    try {
+      const avatarUrl = await uploadAvatar(file);
+      
+      if (avatarUrl) {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ avatar_url: avatarUrl })
+          .eq('user_id', user.id);
+
+        if (error) throw error;
+
+        toast({
+          title: "Photo de profil mise à jour",
+          description: "Votre nouvelle photo a été sauvegardée",
+        });
+
+        loadProfile();
+      }
+    } catch (error: any) {
+      console.error('Error updating avatar:', error);
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de la mise à jour de la photo",
+        variant: "destructive",
+      });
+    }
+
+    setIsUploadingAvatar(false);
+  };
+
   if (isLoadingProfile) {
     return (
       <div className="min-h-screen bg-background">
@@ -142,13 +202,28 @@ const Profile = () => {
                       {firstName.charAt(0)}{lastName.charAt(0)}
                     </AvatarFallback>
                   </Avatar>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="absolute -bottom-2 -right-2 rounded-full w-8 h-8 p-0"
-                  >
-                    <Camera className="w-4 h-4" />
-                  </Button>
+                  <div className="absolute -bottom-2 -right-2">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarChange}
+                      className="hidden"
+                      id="avatar-upload"
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="rounded-full w-8 h-8 p-0"
+                      onClick={() => document.getElementById('avatar-upload')?.click()}
+                      disabled={isUploadingAvatar}
+                    >
+                      {isUploadingAvatar ? (
+                        <div className="animate-spin rounded-full h-3 w-3 border-b border-primary"></div>
+                      ) : (
+                        <Camera className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
 
                 <div>
