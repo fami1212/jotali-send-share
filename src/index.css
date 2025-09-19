@@ -17,51 +17,47 @@ All colors MUST be HSL.
     --popover: 240 10% 3.9%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 263 70% 50%;
+    --primary: 240 75% 58%;
     --primary-foreground: 0 0% 98%;
 
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
+    --secondary: 262 83% 58%;
+    --secondary-foreground: 0 0% 98%;
 
     --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
+    --muted-foreground: 240 20% 70%;
 
-    --accent: 263 70% 50%;
+    --accent: 217 91% 60%;
     --accent-foreground: 0 0% 98%;
 
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 263 70% 50%;
+    --border: 240 3.7% 20%;
+    --input: 240 3.7% 18%;
+    --ring: 240 75% 58%;
 
-    /* Modern Financial App Colors - Purple & Blue Theme */
-    --success: 142 71% 45%;
+    /* Modern Financial App Colors - Improved Readability */
+    --success: 142 71% 50%;
     --success-foreground: 0 0% 100%;
-    --warning: 48 96% 53%;
+    --warning: 48 96% 60%;
     --warning-foreground: 0 0% 100%;
-    --info: 217 91% 60%;
+    --info: 217 91% 65%;
     --info-foreground: 0 0% 100%;
-    --purple-light: 280 100% 85%;
-    --purple-medium: 263 70% 50%;
-    --purple-dark: 263 70% 35%;
-    --blue-light: 217 91% 85%;
-    --blue-medium: 217 91% 60%;
-    --blue-dark: 217 91% 45%;
+    --purple: 262 83% 58%;
+    --blue: 217 91% 60%;
 
-    /* Modern Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(263 70% 50%), hsl(217 91% 60%));
-    --gradient-secondary: linear-gradient(135deg, hsl(280 100% 85%), hsl(217 91% 85%));
-    --gradient-hero: linear-gradient(135deg, hsl(263 70% 50%), hsl(217 91% 60%));
-    --gradient-card: linear-gradient(145deg, hsl(240 10% 3.9%), hsl(240 3.7% 15.9%));
-    --gradient-accent: linear-gradient(135deg, hsl(280 100% 70%), hsl(263 70% 50%));
+    /* Modern Gradients - Enhanced */
+    --gradient-primary: linear-gradient(135deg, hsl(240 75% 58%), hsl(262 83% 58%));
+    --gradient-secondary: linear-gradient(135deg, hsl(262 83% 58%), hsl(217 91% 60%));  
+    --gradient-hero: linear-gradient(135deg, hsl(240 75% 58%), hsl(217 91% 60%));
+    --gradient-card: linear-gradient(145deg, hsl(240 10% 8%), hsl(240 3.7% 18%));
+    --gradient-accent: linear-gradient(135deg, hsl(217 91% 60%), hsl(262 83% 58%));
 
-    /* Modern Shadows */
-    --shadow-soft: 0 4px 16px -4px hsl(263 70% 50% / 0.15);
-    --shadow-medium: 0 12px 32px -8px hsl(263 70% 50% / 0.25);
-    --shadow-strong: 0 24px 48px -12px hsl(263 70% 50% / 0.35);
-    --shadow-glow: 0 0 24px hsl(263 70% 50% / 0.2);
+    /* Modern Shadows - Enhanced */
+    --shadow-soft: 0 4px 16px -4px hsl(240 75% 58% / 0.15);
+    --shadow-medium: 0 12px 32px -8px hsl(240 75% 58% / 0.25);
+    --shadow-strong: 0 24px 48px -12px hsl(240 75% 58% / 0.35);
+    --shadow-glow: 0 0 24px hsl(240 75% 58% / 0.3);
 
     --radius: 0.5rem;
 
