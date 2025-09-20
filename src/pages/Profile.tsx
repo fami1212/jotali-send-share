@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import Navbar from '@/components/Navbar';
+import BottomNavigation from '@/components/BottomNavigation';
 
 interface Profile {
   id: string;
@@ -164,41 +165,46 @@ const Profile = () => {
 
   if (isLoadingProfile) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navbar />
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+        <div className="hidden md:block">
+          <Navbar />
+        </div>
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-2 text-muted-foreground">Chargement du profil...</p>
+            <p className="mt-2 text-slate-600">Chargement du profil...</p>
           </div>
         </div>
+        <BottomNavigation />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <div className="hidden md:block">
+        <Navbar />
+      </div>
       
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 pb-24">
         <div className="max-w-2xl mx-auto">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-foreground mb-2">
-              Mon profil
+            <h1 className="text-3xl font-bold text-slate-800 mb-2">
+              Mon profil 👤
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-slate-600">
               Gérez vos informations personnelles et vos préférences
             </p>
           </div>
 
           <div className="space-y-6">
             {/* Avatar Section */}
-            <Card className="p-6">
+            <Card className="p-6 bg-white/95 backdrop-blur-sm shadow-medium border-0 rounded-2xl">
               <div className="flex items-center space-x-6">
                 <div className="relative">
-                  <Avatar className="w-24 h-24">
+                  <Avatar className="w-24 h-24 shadow-medium">
                     <AvatarImage src={profile?.avatar_url} />
-                    <AvatarFallback className="text-2xl">
+                    <AvatarFallback className="text-2xl bg-gradient-primary text-white">
                       {firstName.charAt(0)}{lastName.charAt(0)}
                     </AvatarFallback>
                   </Avatar>
@@ -227,10 +233,10 @@ const Profile = () => {
                 </div>
 
                 <div>
-                  <h3 className="text-xl font-semibold text-foreground">
+                  <h3 className="text-xl font-semibold text-slate-800">
                     {firstName} {lastName}
                   </h3>
-                  <p className="text-muted-foreground">{user?.email}</p>
+                  <p className="text-slate-600">{user?.email}</p>
                   
                   <div className="flex items-center mt-2">
                     {profile?.is_verified ? (
@@ -250,38 +256,38 @@ const Profile = () => {
             </Card>
 
             {/* Profile Form */}
-            <Card className="p-6">
-              <h2 className="text-xl font-semibold mb-4">Informations personnelles</h2>
+            <Card className="p-6 bg-white/95 backdrop-blur-sm shadow-medium border-0 rounded-2xl">
+              <h2 className="text-xl font-semibold mb-4 text-slate-800">Informations personnelles</h2>
               
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">Prénom</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input
-                        id="firstName"
-                        value={firstName}
-                        onChange={(e) => setFirstName(e.target.value)}
-                        className="pl-10"
-                        placeholder="Votre prénom"
-                      />
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName" className="text-slate-700">Prénom</Label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-500" />
+                        <Input
+                          id="firstName"
+                          value={firstName}
+                          onChange={(e) => setFirstName(e.target.value)}
+                          className="pl-10 border-2 border-slate-200 bg-white text-slate-800"
+                          placeholder="Votre prénom"
+                        />
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName">Nom</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input
-                        id="lastName"
-                        value={lastName}
-                        onChange={(e) => setLastName(e.target.value)}
-                        className="pl-10"
-                        placeholder="Votre nom"
-                      />
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName" className="text-slate-700">Nom</Label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-500" />
+                        <Input
+                          id="lastName"
+                          value={lastName}
+                          onChange={(e) => setLastName(e.target.value)}
+                          className="pl-10 border-2 border-slate-200 bg-white text-slate-800"
+                          placeholder="Votre nom"
+                        />
+                      </div>
                     </div>
-                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -338,37 +344,37 @@ const Profile = () => {
                   </div>
                 </div>
 
-                <Button type="submit" disabled={isLoading} className="w-full">
+                <Button type="submit" disabled={isLoading} className="w-full bg-gradient-primary hover:opacity-90 text-white shadow-medium">
                   {isLoading ? "Mise à jour..." : "Sauvegarder les modifications"}
                 </Button>
               </form>
             </Card>
 
             {/* Security Section */}
-            <Card className="p-6">
-              <h2 className="text-xl font-semibold mb-4">Sécurité</h2>
+            <Card className="p-6 bg-white/95 backdrop-blur-sm shadow-medium border-0 rounded-2xl">
+              <h2 className="text-xl font-semibold mb-4 text-slate-800">Sécurité</h2>
               
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200">
                   <div>
-                    <h4 className="font-medium">Mot de passe</h4>
-                    <p className="text-sm text-muted-foreground">
+                    <h4 className="font-medium text-slate-800">Mot de passe</h4>
+                    <p className="text-sm text-slate-600">
                       Dernière modification il y a plus de 30 jours
                     </p>
                   </div>
-                  <Button variant="outline">
+                  <Button variant="outline" className="border-2 border-slate-200 text-slate-600 hover:border-primary hover:text-primary">
                     Changer le mot de passe
                   </Button>
                 </div>
 
-                <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200">
                   <div>
-                    <h4 className="font-medium">Authentification à deux facteurs</h4>
-                    <p className="text-sm text-muted-foreground">
+                    <h4 className="font-medium text-slate-800">Authentification à deux facteurs</h4>
+                    <p className="text-sm text-slate-600">
                       Sécurisez votre compte avec 2FA
                     </p>
                   </div>
-                  <Button variant="outline">
+                  <Button variant="outline" className="border-2 border-slate-200 text-slate-600 hover:border-primary hover:text-primary">
                     Activer 2FA
                   </Button>
                 </div>
@@ -377,6 +383,9 @@ const Profile = () => {
           </div>
         </div>
       </div>
+      
+      {/* Bottom Navigation */}
+      <BottomNavigation />
     </div>
   );
 };

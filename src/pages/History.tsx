@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import Navbar from '@/components/Navbar';
+import BottomNavigation from '@/components/BottomNavigation';
 import { Link } from 'react-router-dom';
 
 interface Transfer {
@@ -102,13 +103,13 @@ const History = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pending': return 'bg-yellow-500/10 text-yellow-500';
-      case 'awaiting_admin': return 'bg-blue-500/10 text-blue-500';
-      case 'approved': return 'bg-green-500/10 text-green-500';
-      case 'completed': return 'bg-green-600/10 text-green-600';
-      case 'rejected': return 'bg-red-500/10 text-red-500';
-      case 'cancelled': return 'bg-gray-500/10 text-gray-500';
-      default: return 'bg-gray-500/10 text-gray-500';
+      case 'pending': return 'bg-warning/10 text-warning border-warning/20';
+      case 'awaiting_admin': return 'bg-info/10 text-info border-info/20';
+      case 'approved': return 'bg-success/10 text-success border-success/20';
+      case 'completed': return 'bg-success/10 text-success border-success/20';
+      case 'rejected': return 'bg-destructive/10 text-destructive border-destructive/20';
+      case 'cancelled': return 'bg-slate-500/10 text-slate-500 border-slate-500/20';
+      default: return 'bg-slate-500/10 text-slate-500 border-slate-500/20';
     }
   };
 
@@ -143,28 +144,30 @@ const History = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navbar />
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+        <div className="hidden md:block">
+          <Navbar />
+        </div>
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-2 text-muted-foreground">Chargement...</p>
+            <p className="mt-2 text-slate-600">Chargement...</p>
           </div>
         </div>
+        <BottomNavigation />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-hero">
-      {/* Mobile-first design */}
-      <div className="container mx-auto px-4 py-6 max-w-md md:max-w-4xl">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <div className="container mx-auto px-4 py-6 max-w-md md:max-w-4xl pb-24">
         {/* Mobile Header */}
         <div className="md:hidden mb-6">
-          <h1 className="text-2xl font-bold text-white mb-2">
-            Historique
+          <h1 className="text-2xl font-bold text-slate-800 mb-2">
+            Historique 📋
           </h1>
-          <p className="text-white/70">
+          <p className="text-slate-600">
             Consultez vos transferts
           </p>
         </div>
@@ -175,30 +178,30 @@ const History = () => {
         </div>
         
         <div className="hidden md:block mb-8 mt-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">
+          <h1 className="text-3xl font-bold text-slate-800 mb-2">
             Historique des transferts
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-slate-600">
             Consultez tous vos transferts d'argent
           </p>
         </div>
 
         {/* Filters */}
-        <Card className="bg-white/90 backdrop-blur-sm p-4 rounded-2xl shadow-medium mb-6">
+        <Card className="bg-white/95 backdrop-blur-sm p-4 rounded-2xl shadow-medium mb-6 border-0">
           <div className="space-y-4 md:space-y-0 md:grid md:grid-cols-3 md:gap-4">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-500" />
               <Input
                 placeholder="Rechercher par référence..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 rounded-xl"
+                className="pl-10 rounded-xl border-2 border-slate-200 text-slate-800 bg-white"
               />
             </div>
             
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="rounded-xl">
-                <Filter className="w-4 h-4 mr-2" />
+              <SelectTrigger className="rounded-xl border-2 border-slate-200 bg-white">
+                <Filter className="w-4 h-4 mr-2 text-slate-500" />
                 <SelectValue placeholder="Filtrer par statut" />
               </SelectTrigger>
               <SelectContent>
@@ -213,7 +216,7 @@ const History = () => {
             </Select>
 
             <div className="flex items-center justify-center">
-              <Badge variant="outline" className="bg-white/50">
+              <Badge className="bg-primary/10 text-primary border-primary/20">
                 {filteredTransfers.length} transfert(s)
               </Badge>
             </div>
@@ -224,16 +227,16 @@ const History = () => {
         <div className="space-y-3">
           {filteredTransfers.length > 0 ? (
             filteredTransfers.map((transfer) => (
-              <Card key={transfer.id} className="bg-white/90 backdrop-blur-sm p-4 rounded-2xl shadow-medium">
+              <Card key={transfer.id} className="bg-white/95 backdrop-blur-sm p-4 rounded-2xl shadow-medium border-0 hover:shadow-strong transition-all duration-200">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <div className="w-12 h-12 bg-gradient-primary rounded-2xl flex items-center justify-center shadow-soft">
+                    <div className="w-12 h-12 bg-gradient-primary rounded-2xl flex items-center justify-center shadow-medium">
                       <ArrowRightLeft className="w-5 h-5 text-white" />
                     </div>
                     
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center space-x-2 mb-1">
-                        <h3 className="font-semibold text-foreground text-sm truncate">
+                        <h3 className="font-semibold text-slate-800 text-sm truncate">
                           {transfer.reference_number}
                         </h3>
                         <Badge className={`text-xs ${getStatusColor(transfer.status)}`}>
@@ -241,12 +244,12 @@ const History = () => {
                         </Badge>
                       </div>
                       
-                      <div className="space-y-1 text-xs text-muted-foreground">
+                      <div className="space-y-1 text-xs text-slate-600">
                         <div>
                           {formatCurrency(transfer.amount, transfer.from_currency)} → {formatCurrency(transfer.converted_amount, transfer.to_currency)}
                         </div>
                         <div className="flex items-center space-x-2">
-                          <span className="truncate">{transfer.recipients?.name}</span>
+                          <span className="truncate">{transfer.recipients?.name || 'Retrait personnel'}</span>
                           <span>•</span>
                           <span className="capitalize">{transfer.transfer_method === 'bank' ? 'Virement' : 'Wave'}</span>
                         </div>
@@ -255,10 +258,10 @@ const History = () => {
                   </div>
                   
                   <div className="text-right">
-                    <div className="text-xs text-muted-foreground mb-2">
+                    <div className="text-xs text-slate-500 mb-2">
                       {formatDate(transfer.created_at)}
                     </div>
-                    <Button variant="ghost" size="sm" className="text-xs h-8 px-2">
+                    <Button variant="ghost" size="sm" className="text-xs h-8 px-2 text-slate-600 hover:text-primary">
                       <Eye className="w-3 h-3 mr-1" />
                       Détails
                     </Button>
@@ -267,27 +270,27 @@ const History = () => {
               </Card>
             ))
           ) : (
-            <Card className="bg-white/90 backdrop-blur-sm p-8 rounded-2xl shadow-medium text-center">
-              <ArrowRightLeft className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-foreground mb-2">
+            <Card className="bg-white/95 backdrop-blur-sm p-8 rounded-2xl shadow-medium text-center border-0">
+              <ArrowRightLeft className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-slate-800 mb-2">
                 Aucun transfert trouvé
               </h3>
-              <p className="text-muted-foreground mb-6 text-sm">
+              <p className="text-slate-600 mb-6 text-sm">
                 {searchTerm || statusFilter !== 'all' 
                   ? "Essayez de modifier vos filtres de recherche"
                   : "Vous n'avez pas encore effectué de transfert"
                 }
               </p>
-              <Button asChild className="bg-gradient-primary hover:opacity-90">
+              <Button asChild className="bg-gradient-primary hover:opacity-90 text-white shadow-medium">
                 <Link to="/transfer">Effectuer un transfert</Link>
               </Button>
             </Card>
           )}
         </div>
-
-        {/* Mobile Bottom Spacing */}
-        <div className="h-20 md:h-0"></div>
       </div>
+      
+      {/* Bottom Navigation */}
+      <BottomNavigation />
     </div>
   );
 };

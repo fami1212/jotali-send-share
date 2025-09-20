@@ -1,5 +1,6 @@
 import ModernTransferForm from '@/components/ModernTransferForm';
 import Navbar from '@/components/Navbar';
+import BottomNavigation from '@/components/BottomNavigation';
 
 const Transfer = () => {
   return (
@@ -8,6 +9,7 @@ const Transfer = () => {
         <Navbar />
       </div>
       <ModernTransferForm />
+      <BottomNavigation />
     </div>
   );
 };

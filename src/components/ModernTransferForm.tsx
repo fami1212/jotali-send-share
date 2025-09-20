@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import BottomNavigation from './BottomNavigation';
 
 interface Recipient {
   id: string;
@@ -220,19 +221,19 @@ const ModernTransferForm = () => {
   const totalAmount = amount ? parseFloat(amount) + 0 : 0;
 
   return (
-    <div className="min-h-screen bg-gradient-hero">
-      <div className="container mx-auto px-4 py-6 max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <div className="container mx-auto px-4 py-6 max-w-md pb-24">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <Button 
             variant="ghost" 
             size="icon" 
             onClick={() => navigate('/dashboard')}
-            className="text-white"
+            className="text-slate-600 hover:text-primary hover:bg-primary/10"
           >
             <ArrowLeft className="w-6 h-6" />
           </Button>
-          <h1 className="text-xl font-bold text-white">
+          <h1 className="text-xl font-bold text-slate-800">
             Nouveau transfert
           </h1>
           <div className="w-10 h-10"></div>
@@ -242,33 +243,33 @@ const ModernTransferForm = () => {
           {/* Step 1: Transfer Type */}
           {step === 1 && (
             <>
-              <Card className="bg-white/90 backdrop-blur-sm p-4 rounded-2xl shadow-medium">
-                <h2 className="text-lg font-semibold mb-4 text-center">Type d'opération</h2>
+              <Card className="bg-white/95 backdrop-blur-sm p-6 rounded-2xl shadow-medium border-0">
+                <h2 className="text-lg font-semibold mb-4 text-center text-slate-800">Type d'opération</h2>
                 
                 <RadioGroup value={transferType} onValueChange={setTransferType}>
-                  <div className="space-y-3">
-                     <div className="flex items-center space-x-3 p-4 border-2 rounded-2xl border-primary/30 hover:border-primary transition-colors">
+                  <div className="space-y-4">
+                     <div className="flex items-center space-x-4 p-4 border-2 rounded-2xl border-primary/20 hover:border-primary transition-all duration-200 hover:shadow-medium">
                        <RadioGroupItem value="withdraw" id="withdraw" />
-                       <Label htmlFor="withdraw" className="flex items-center space-x-3 cursor-pointer flex-1">
-                         <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center">
-                           <ArrowRightLeft className="w-5 h-5 text-white" />
+                       <Label htmlFor="withdraw" className="flex items-center space-x-4 cursor-pointer flex-1">
+                         <div className="w-12 h-12 bg-gradient-primary rounded-xl flex items-center justify-center shadow-medium">
+                           <ArrowRightLeft className="w-6 h-6 text-white" />
                          </div>
                          <div>
-                           <p className="font-medium">Retrait / Échange</p>
-                           <p className="text-sm text-muted-foreground">Échanger mes CFA en Dirham (ou inverse)</p>
+                           <p className="font-semibold text-slate-800">Retrait / Échange</p>
+                           <p className="text-sm text-slate-600">Échanger mes CFA en Dirham (ou inverse)</p>
                          </div>
                        </Label>
                      </div>
                      
-                     <div className="flex items-center space-x-3 p-4 border-2 rounded-2xl border-secondary/30 hover:border-secondary transition-colors">
+                     <div className="flex items-center space-x-4 p-4 border-2 rounded-2xl border-secondary/20 hover:border-secondary transition-all duration-200 hover:shadow-medium">
                        <RadioGroupItem value="send" id="send" />
-                       <Label htmlFor="send" className="flex items-center space-x-3 cursor-pointer flex-1">
-                         <div className="w-10 h-10 bg-gradient-secondary rounded-xl flex items-center justify-center">
-                           <Plus className="w-5 h-5 text-white" />
+                       <Label htmlFor="send" className="flex items-center space-x-4 cursor-pointer flex-1">
+                         <div className="w-12 h-12 bg-gradient-secondary rounded-xl flex items-center justify-center shadow-medium">
+                           <Plus className="w-6 h-6 text-white" />
                          </div>
                          <div>
-                           <p className="font-medium">Envoi vers bénéficiaire</p>
-                           <p className="text-sm text-muted-foreground">Transférer vers un contact</p>
+                           <p className="font-semibold text-slate-800">Envoi vers bénéficiaire</p>
+                           <p className="text-sm text-slate-600">Transférer vers un contact</p>
                          </div>
                        </Label>
                      </div>
@@ -279,7 +280,7 @@ const ModernTransferForm = () => {
               <Button 
                 type="button"
                 onClick={() => setStep(2)}
-                className="w-full bg-gradient-primary hover:opacity-90 rounded-2xl h-12"
+                className="w-full bg-gradient-primary hover:opacity-90 rounded-2xl h-12 text-white font-medium shadow-medium"
               >
                 Continuer
               </Button>
@@ -290,24 +291,24 @@ const ModernTransferForm = () => {
           {step === 2 && (
             <>
               {/* Amount Card */}
-              <Card className="bg-white/90 backdrop-blur-sm p-4 rounded-2xl shadow-medium">
-                <h2 className="text-lg font-semibold mb-4 text-center">Montant</h2>
+              <Card className="bg-white/95 backdrop-blur-sm p-6 rounded-2xl shadow-medium border-0">
+                <h2 className="text-lg font-semibold mb-4 text-center text-slate-800">Montant</h2>
                 
                 <div className="space-y-4">
                   <div>
-                    <Label className="text-sm text-muted-foreground">Vous envoyez</Label>
+                    <Label className="text-sm text-slate-600 font-medium">Vous envoyez</Label>
                     <div className="flex items-center space-x-2 mt-2">
                       <Input
                         type="number"
                         placeholder="0"
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
-                        className="text-2xl h-12 text-center rounded-xl border-2"
+                        className="text-2xl h-12 text-center rounded-xl border-2 border-slate-200 focus:border-primary bg-white text-slate-800"
                         step="0.01"
                         min="1"
                       />
                       <Select value={fromCurrency} onValueChange={setFromCurrency}>
-                        <SelectTrigger className="w-20 h-12 rounded-xl">
+                        <SelectTrigger className="w-20 h-12 rounded-xl border-2 border-slate-200 bg-white">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -324,23 +325,23 @@ const ModernTransferForm = () => {
                       variant="outline"
                       size="icon"
                       onClick={swapCurrencies}
-                      className="rounded-full w-10 h-10 bg-white"
+                      className="rounded-full w-10 h-10 bg-white border-2 border-slate-200 hover:border-primary hover:bg-primary/5"
                     >
-                      <ArrowRightLeft className="w-4 h-4" />
+                      <ArrowRightLeft className="w-4 h-4 text-slate-600" />
                     </Button>
                   </div>
 
                   <div>
-                    <Label className="text-sm text-muted-foreground">Bénéficiaire reçoit</Label>
+                    <Label className="text-sm text-slate-600 font-medium">Bénéficiaire reçoit</Label>
                     <div className="flex items-center space-x-2 mt-2">
                       <Input
                         type="text"
                         value={convertedAmount}
                         readOnly
-                        className="text-2xl h-12 text-center bg-purple/10 font-semibold text-purple rounded-xl"
+                        className="text-2xl h-12 text-center bg-primary/5 font-semibold text-primary rounded-xl border-2 border-primary/20"
                       />
                       <Select value={toCurrency} onValueChange={setToCurrency}>
-                        <SelectTrigger className="w-20 h-12 rounded-xl">
+                        <SelectTrigger className="w-20 h-12 rounded-xl border-2 border-slate-200 bg-white">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -351,18 +352,18 @@ const ModernTransferForm = () => {
                     </div>
                   </div>
 
-                  <div className="bg-purple/5 p-3 rounded-xl">
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
                     <div className="flex justify-between text-sm mb-1">
-                      <span>Taux</span>
-                      <span className="font-medium">1 {fromCurrency} = {exchangeRate} {toCurrency}</span>
+                      <span className="text-slate-600">Taux</span>
+                      <span className="font-medium text-slate-800">1 {fromCurrency} = {exchangeRate} {toCurrency}</span>
                     </div>
                     <div className="flex justify-between text-sm mb-1">
-                      <span>Frais</span>
+                      <span className="text-slate-600">Frais</span>
                       <span className="font-medium text-success">Gratuit</span>
                     </div>
-                    <div className="flex justify-between text-sm pt-2 border-t border-border/50">
-                      <span className="font-medium">Total</span>
-                      <span className="font-bold">{formatCurrency(totalAmount, fromCurrency)}</span>
+                    <div className="flex justify-between text-sm pt-2 border-t border-slate-200">
+                      <span className="font-medium text-slate-600">Total</span>
+                      <span className="font-bold text-slate-800">{formatCurrency(totalAmount, fromCurrency)}</span>
                     </div>
                   </div>
                 </div>

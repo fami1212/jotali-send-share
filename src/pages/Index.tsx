@@ -43,18 +43,17 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-hero">
-      <div className="container mx-auto px-4 py-6 max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <div className="container mx-auto px-4 py-6 max-w-md pb-24">
         {/* Header */}
-        <div className="flex items-center justify-between mb-12 pt-8">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-medium">
-              <ArrowRightLeft className="w-6 h-6 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">Koligo</h1>
-              <p className="text-sm text-white/70">Transferts d'argent</p>
-            </div>
+        <div className="flex items-center justify-between mb-8">
+          <div className="text-slate-800">
+            <h1 className="text-2xl font-bold mb-1">
+              Bonjour ! 👋
+            </h1>
+            <p className="text-lg font-medium text-slate-600">
+              Gérez vos transferts facilement
+            </p>
           </div>
         </div>
 
