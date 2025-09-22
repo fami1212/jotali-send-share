@@ -32,8 +32,9 @@ const ModernDashboard = () => {
     totalSent: 0,
     totalReceived: 0,
     pendingTransfers: 0,
-    balance: 156700 // Simulation du solde comme dans l'image
+    balance: 50000 // Solde de départ par défaut
   });
+  const [lastTransfer, setLastTransfer] = useState<any>(null);
 
   useEffect(() => {
     if (user) {
@@ -46,11 +47,15 @@ const ModernDashboard = () => {
       const { data: transfers } = await supabase
         .from('transfers')
         .select('*')
-        .eq('user_id', user?.id);
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false });
 
-      if (transfers) {
+      if (transfers && transfers.length > 0) {
+        // Récupérer le dernier transfert
+        setLastTransfer(transfers[0]);
+        
         const sent = transfers
-          .filter(t => t.transfer_type === 'send')
+          .filter(t => t.transfer_type === 'transfer')
           .reduce((sum, t) => sum + t.amount, 0);
         
         const received = transfers
@@ -58,12 +63,27 @@ const ModernDashboard = () => {
           .reduce((sum, t) => sum + t.converted_amount, 0);
         
         const pending = transfers.filter(t => t.status === 'pending' || t.status === 'awaiting_admin').length;
+        
+        // Calculer le solde dynamique - commencer avec un solde de base
+        const baseBalance = 50000; // Solde fictif de départ
+        const completedTransfers = transfers.filter(t => t.status === 'completed');
+        const balance = completedTransfers.reduce((sum, t) => {
+          // Les retraits/échanges sont des sorties d'argent
+          if (t.transfer_type === 'withdrawal' || t.transfer_type === 'exchange') {
+            return sum - t.amount;
+          }
+          // Les transferts vers bénéficiaires sont aussi des sorties
+          if (t.transfer_type === 'transfer') {
+            return sum - t.amount;
+          }
+          return sum;
+        }, baseBalance);
 
         setStats({
           totalSent: sent,
           totalReceived: received,
           pendingTransfers: pending,
-          balance: 156700 // Simulation
+          balance: Math.max(balance, 0) // Ne jamais avoir un solde négatif
         });
       }
     } catch (error) {
@@ -212,12 +232,28 @@ const ModernDashboard = () => {
               </div>
               <div>
                 <p className="text-sm font-medium text-slate-800">Dernier transfert</p>
-                <p className="text-xs text-slate-500">Il y a 2 heures</p>
+                {lastTransfer ? (
+                  <p className="text-xs text-slate-500">
+                    {new Date(lastTransfer.created_at).toLocaleDateString()} - {lastTransfer.reference_number}
+                  </p>
+                ) : (
+                  <p className="text-xs text-slate-500">Aucun transfert récent</p>
+                )}
               </div>
             </div>
             <div className="text-right">
-              <span className="text-success font-semibold">+91.800 F</span>
-              <ArrowUpRight className="w-4 h-4 text-success inline-block ml-1" />
+              {lastTransfer ? (
+                <>
+                  <span className={`font-semibold ${lastTransfer.status === 'completed' ? 'text-success' : 'text-orange-600'}`}>
+                    {formatCurrency(lastTransfer.amount)}
+                  </span>
+                  <Badge className={`ml-2 text-xs ${lastTransfer.status === 'completed' ? 'bg-success/10 text-success' : 'bg-orange-100 text-orange-600'}`}>
+                    {lastTransfer.status === 'completed' ? 'Terminé' : 'En attente'}
+                  </Badge>
+                </>
+              ) : (
+                <span className="text-slate-400">-</span>
+              )}
             </div>
           </div>
         </Card>

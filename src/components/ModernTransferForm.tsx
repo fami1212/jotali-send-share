@@ -33,7 +33,7 @@ const ModernTransferForm = () => {
   const [toCurrency, setToCurrency] = useState('MAD');
   const [convertedAmount, setConvertedAmount] = useState('');
   const [exchangeRate, setExchangeRate] = useState(60);
-  const [transferType, setTransferType] = useState('withdraw');
+  const [transferType, setTransferType] = useState('withdrawal');
   const [transferMethod, setTransferMethod] = useState('bank');
   const [selectedRecipient, setSelectedRecipient] = useState('');
   const [recipients, setRecipients] = useState<Recipient[]>([]);
@@ -122,7 +122,7 @@ const ModernTransferForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (transferType === 'send' && !selectedRecipient) {
+    if (transferType === 'transfer' && !selectedRecipient) {
       toast({
         title: "Erreur",
         description: "Veuillez sélectionner un bénéficiaire",
@@ -140,7 +140,7 @@ const ModernTransferForm = () => {
       return;
     }
 
-    if (transferType === 'send' && !proofImage) {
+    if (transferType === 'transfer' && !proofImage) {
       toast({
         title: "Erreur",
         description: "Veuillez ajouter une preuve de paiement pour un envoi",
@@ -156,7 +156,7 @@ const ModernTransferForm = () => {
       
       const transferData = {
         user_id: user?.id,
-        recipient_id: transferType === 'send' ? selectedRecipient : null,
+        recipient_id: transferType === 'transfer' ? selectedRecipient : null,
         amount: parseFloat(amount),
         from_currency: fromCurrency,
         to_currency: toCurrency,
@@ -192,8 +192,8 @@ const ModernTransferForm = () => {
       }
 
       toast({
-        title: transferType === 'send' ? "Envoi créé" : "Demande de retrait créée",
-        description: transferType === 'send' 
+        title: transferType === 'transfer' ? "Envoi créé" : "Demande de retrait créée",
+        description: transferType === 'transfer' 
           ? "Votre envoi vers le bénéficiaire a été créé avec succès"
           : "Votre demande de retrait/échange est en attente de validation",
       });
@@ -249,8 +249,8 @@ const ModernTransferForm = () => {
                 <RadioGroup value={transferType} onValueChange={setTransferType}>
                   <div className="space-y-4">
                      <div className="flex items-center space-x-4 p-4 border-2 rounded-2xl border-primary/20 hover:border-primary transition-all duration-200 hover:shadow-medium">
-                       <RadioGroupItem value="withdraw" id="withdraw" />
-                       <Label htmlFor="withdraw" className="flex items-center space-x-4 cursor-pointer flex-1">
+                        <RadioGroupItem value="withdrawal" id="withdrawal" />
+                        <Label htmlFor="withdrawal" className="flex items-center space-x-4 cursor-pointer flex-1">
                          <div className="w-12 h-12 bg-gradient-primary rounded-xl flex items-center justify-center shadow-medium">
                            <ArrowRightLeft className="w-6 h-6 text-white" />
                          </div>
@@ -262,8 +262,8 @@ const ModernTransferForm = () => {
                      </div>
                      
                      <div className="flex items-center space-x-4 p-4 border-2 rounded-2xl border-secondary/20 hover:border-secondary transition-all duration-200 hover:shadow-medium">
-                       <RadioGroupItem value="send" id="send" />
-                       <Label htmlFor="send" className="flex items-center space-x-4 cursor-pointer flex-1">
+                        <RadioGroupItem value="transfer" id="transfer" />
+                        <Label htmlFor="transfer" className="flex items-center space-x-4 cursor-pointer flex-1">
                          <div className="w-12 h-12 bg-gradient-secondary rounded-xl flex items-center justify-center shadow-medium">
                            <Plus className="w-6 h-6 text-white" />
                          </div>
@@ -370,7 +370,7 @@ const ModernTransferForm = () => {
               </Card>
 
               {/* Recipient Card - Only for send type */}
-              {transferType === 'send' && (
+              {transferType === 'transfer' && (
                 <Card className="bg-white/90 backdrop-blur-sm p-4 rounded-2xl shadow-medium">
                   <div className="flex items-center justify-between mb-3">
                     <h2 className="text-lg font-semibold">Bénéficiaire</h2>
@@ -398,7 +398,7 @@ const ModernTransferForm = () => {
               )}
 
               {/* Info Card for Withdraw */}
-              {transferType === 'withdraw' && (
+              {transferType === 'withdrawal' && (
                 <Card className="bg-white/90 backdrop-blur-sm p-4 rounded-2xl shadow-medium">
                   <h2 className="text-lg font-semibold mb-3 text-center">Retrait personnel</h2>
                   <div className="text-center text-muted-foreground">
@@ -439,7 +439,7 @@ const ModernTransferForm = () => {
               </Card>
 
               {/* Proof Upload for Send */}
-              {transferType === 'send' && (
+              {transferType === 'transfer' && (
                 <Card className="bg-white/90 backdrop-blur-sm p-4 rounded-2xl shadow-medium">
                   <h2 className="text-lg font-semibold mb-3 text-center">Preuve de paiement</h2>
                   <p className="text-sm text-muted-foreground mb-4 text-center">
@@ -491,7 +491,7 @@ const ModernTransferForm = () => {
                   disabled={isLoading}
                 >
                   {isLoading ? "Traitement..." : (
-                    transferType === 'send' ? "Soumettre" : "Créer"
+                    transferType === 'transfer' ? "Soumettre" : "Créer"
                   )}
                 </Button>
               </div>

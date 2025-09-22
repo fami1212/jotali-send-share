@@ -246,7 +246,9 @@ const Admin = () => {
                         {getStatusText(transfer.status)}
                       </Badge>
                       <Badge variant="outline">
-                        {transfer.transfer_type === 'send' ? 'Envoi' : 'Transfert'}
+                        {transfer.transfer_type === 'transfer' ? 'Envoi' : 
+                         transfer.transfer_type === 'withdrawal' ? 'Retrait' :
+                         transfer.transfer_type === 'exchange' ? 'Échange' : 'Transfert'}
                       </Badge>
                     </div>
                     
