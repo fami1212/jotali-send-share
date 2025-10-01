@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, XCircle, Eye, FileImage, MessageSquare, AlertTriangle } from 'lucide-react';
+import { CheckCircle, XCircle, Eye, FileImage } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -62,16 +62,20 @@ const Admin = () => {
   }, [isAdmin, statusFilter]);
 
   const checkAdminStatus = async () => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      navigate('/auth');
+      return;
+    }
 
     try {
-      const { data } = await supabase
-        .from('admin_users')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
+      // Call the is_admin function using RPC
+      const { data, error } = await supabase.rpc('is_admin', { 
+        user_id_input: user.id 
+      });
 
-      if (data) {
+      if (error) throw error;
+
+      if (data === true) {
         setIsAdmin(true);
       } else {
         toast({
@@ -83,11 +87,17 @@ const Admin = () => {
       }
     } catch (error) {
       console.error('Error checking admin status:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de vérifier les privilèges administrateur",
+        variant: "destructive",
+      });
       navigate('/dashboard');
     }
   };
 
   const loadTransfers = async () => {
+    setIsLoading(true);
     try {
       let query = supabase
         .from('transfers')
@@ -100,23 +110,29 @@ const Admin = () => {
 
       const { data, error } = await query;
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       // Get user profiles separately
       const userIds = [...new Set(data?.map(t => t.user_id) || [])];
-      const { data: profiles } = await supabase
+      const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('user_id, first_name, last_name')
         .in('user_id', userIds);
 
+      if (profilesError) {
+        console.error('Error loading profiles:', profilesError);
+      }
+
       // Get recipients
       const recipientIds = [...new Set(data?.map(t => t.recipient_id).filter(Boolean) || [])];
-      const { data: recipients } = await supabase
+      const { data: recipients, error: recipientsError } = await supabase
         .from('recipients')
         .select('id, name, phone, country')
         .in('id', recipientIds);
+
+      if (recipientsError) {
+        console.error('Error loading recipients:', recipientsError);
+      }
 
       // Merge data
       const enhancedTransfers = data?.map(transfer => ({
@@ -133,9 +149,9 @@ const Admin = () => {
         description: "Erreur lors du chargement des transferts",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   const updateTransferStatus = async (transferId: string, newStatus: string, notes?: string) => {
