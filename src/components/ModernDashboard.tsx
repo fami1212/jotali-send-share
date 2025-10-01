@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -12,7 +12,11 @@ import {
   Settings, 
   Bell,
   Wallet,
-  TrendingUp
+  TrendingUp,
+  Activity,
+  CheckCircle2,
+  Clock,
+  DollarSign
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,7 +27,20 @@ interface DashboardStats {
   totalSent: number;
   totalReceived: number;
   pendingTransfers: number;
+  completedTransfers: number;
   balance: number;
+  totalTransactions: number;
+  thisMonthTransfers: number;
+}
+
+interface Transfer {
+  id: string;
+  amount: number;
+  status: string;
+  created_at: string;
+  reference_number: string;
+  to_currency: string;
+  transfer_type: string;
 }
 
 const ModernDashboard = () => {
@@ -32,9 +49,12 @@ const ModernDashboard = () => {
     totalSent: 0,
     totalReceived: 0,
     pendingTransfers: 0,
-    balance: 50000 // Solde de départ par défaut
+    completedTransfers: 0,
+    balance: 50000,
+    totalTransactions: 0,
+    thisMonthTransfers: 0
   });
-  const [lastTransfer, setLastTransfer] = useState<any>(null);
+  const [recentTransfers, setRecentTransfers] = useState<Transfer[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -51,30 +71,33 @@ const ModernDashboard = () => {
         .order('created_at', { ascending: false });
 
       if (transfers && transfers.length > 0) {
-        // Récupérer le dernier transfert
-        setLastTransfer(transfers[0]);
+        // Récupérer les 5 derniers transferts
+        setRecentTransfers(transfers.slice(0, 5));
         
         const sent = transfers
           .filter(t => t.transfer_type === 'transfer')
-          .reduce((sum, t) => sum + t.amount, 0);
+          .reduce((sum, t) => sum + Number(t.amount), 0);
         
         const received = transfers
           .filter(t => t.status === 'completed')
-          .reduce((sum, t) => sum + t.converted_amount, 0);
+          .reduce((sum, t) => sum + Number(t.converted_amount), 0);
         
         const pending = transfers.filter(t => t.status === 'pending' || t.status === 'awaiting_admin').length;
+        const completed = transfers.filter(t => t.status === 'completed').length;
         
-        // Calculer le solde dynamique - commencer avec un solde de base
-        const baseBalance = 50000; // Solde fictif de départ
+        // Transferts ce mois
+        const now = new Date();
+        const thisMonth = transfers.filter(t => {
+          const date = new Date(t.created_at);
+          return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+        }).length;
+        
+        // Calculer le solde dynamique
+        const baseBalance = 50000;
         const completedTransfers = transfers.filter(t => t.status === 'completed');
         const balance = completedTransfers.reduce((sum, t) => {
-          // Les retraits/échanges sont des sorties d'argent
-          if (t.transfer_type === 'withdrawal' || t.transfer_type === 'exchange') {
-            return sum - t.amount;
-          }
-          // Les transferts vers bénéficiaires sont aussi des sorties
-          if (t.transfer_type === 'transfer') {
-            return sum - t.amount;
+          if (t.transfer_type === 'withdrawal' || t.transfer_type === 'exchange' || t.transfer_type === 'transfer') {
+            return sum - Number(t.amount);
           }
           return sum;
         }, baseBalance);
@@ -83,7 +106,10 @@ const ModernDashboard = () => {
           totalSent: sent,
           totalReceived: received,
           pendingTransfers: pending,
-          balance: Math.max(balance, 0) // Ne jamais avoir un solde négatif
+          completedTransfers: completed,
+          balance: Math.max(balance, 0),
+          totalTransactions: transfers.length,
+          thisMonthTransfers: thisMonth
         });
       }
     } catch (error) {
@@ -131,7 +157,7 @@ const ModernDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      <div className="container mx-auto px-4 py-6 max-w-md pb-24">
+      <div className="container mx-auto px-4 py-6 max-w-6xl pb-24">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="text-slate-800">
@@ -139,133 +165,256 @@ const ModernDashboard = () => {
               Bonjour ! 👋
             </h1>
             <p className="text-lg font-medium text-slate-600">
-              Gérez vos transferts facilement
+              Tableau de bord
             </p>
           </div>
           <Button variant="ghost" size="icon" className="text-slate-600 hover:text-primary hover:bg-primary/10">
             <Bell className="w-6 h-6" />
+            {stats.pendingTransfers > 0 && (
+              <span className="absolute top-0 right-0 w-2 h-2 bg-destructive rounded-full animate-pulse" />
+            )}
           </Button>
         </div>
 
-        {/* Balance Card */}
-        <Card className="bg-white/90 backdrop-blur-sm p-6 rounded-3xl shadow-strong mb-6 border-0">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-gradient-primary rounded-2xl flex items-center justify-center shadow-medium">
-              <Wallet className="w-6 h-6 text-white" />
-            </div>
-            <div className="text-sm text-slate-500">
-              💰
+        {/* Balance Card - Hero */}
+        <Card className="bg-gradient-primary backdrop-blur-sm p-8 rounded-3xl shadow-strong mb-6 border-0 text-white">
+          <div className="flex items-start justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center shadow-medium">
+                <Wallet className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <p className="text-sm text-white/80 mb-1">Solde disponible</p>
+                <h2 className="text-5xl font-bold text-white">
+                  {formatCurrency(stats.balance)}
+                </h2>
+              </div>
             </div>
           </div>
           
-          <div className="mb-4">
-            <p className="text-sm text-slate-600 mb-1">Solde disponible</p>
-            <h2 className="text-4xl font-bold text-slate-800 mb-4">
-              {formatCurrency(stats.balance)}
-            </h2>
-            
+          <div className="flex gap-3">
             <Button 
               asChild
-              className="bg-gradient-primary hover:opacity-90 text-white rounded-2xl px-6 font-medium shadow-medium"
+              className="flex-1 bg-white text-primary hover:bg-white/90 rounded-2xl px-6 font-medium shadow-medium"
             >
               <Link to="/transfer">
                 <PlusCircle className="w-5 h-5 mr-2" />
                 Nouveau transfert
               </Link>
             </Button>
-          </div>
-        </Card>
-
-        {/* Savings Card */}
-        <Card className="bg-white/90 backdrop-blur-sm p-4 rounded-2xl shadow-medium mb-6 border-0">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-secondary rounded-xl flex items-center justify-center shadow-medium">
-              <TrendingUp className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-slate-600">Épargne</p>
-              <p className="text-xl font-bold text-slate-800">12.000 F</p>
-            </div>
-          </div>
-        </Card>
-
-        {/* Services Grid */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          {services.map((service, index) => (
-            <Link 
-              key={index}
-              to={service.link}
-              className="block transform hover:scale-105 transition-all duration-200"
+            <Button 
+              asChild
+              variant="outline"
+              className="flex-1 bg-white/10 border-white/20 text-white hover:bg-white/20 rounded-2xl px-6 font-medium"
             >
-              <Card className="bg-white/90 backdrop-blur-sm p-4 rounded-2xl shadow-medium text-center border-0 hover:shadow-strong">
-                <div className={`w-12 h-12 ${service.color} rounded-xl flex items-center justify-center mx-auto mb-3 shadow-medium`}>
-                  <service.icon className="w-6 h-6 text-white" />
-                </div>
-                <p className="text-sm font-semibold text-slate-800 mb-1">{service.title}</p>
-                <p className="text-xs text-slate-500">{service.subtitle}</p>
-              </Card>
-            </Link>
-          ))}
+              <Link to="/history">
+                <History className="w-5 h-5 mr-2" />
+                Historique
+              </Link>
+            </Button>
+          </div>
+        </Card>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <Card className="bg-white/90 backdrop-blur-sm p-4 rounded-2xl shadow-medium border-0">
+            <CardHeader className="p-0 pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium text-slate-600">Total envoyé</CardTitle>
+                <ArrowUpRight className="w-4 h-4 text-destructive" />
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="text-2xl font-bold text-slate-800">{formatCurrency(stats.totalSent)}</div>
+              <p className="text-xs text-slate-500 mt-1">{stats.totalTransactions} transactions</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white/90 backdrop-blur-sm p-4 rounded-2xl shadow-medium border-0">
+            <CardHeader className="p-0 pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium text-slate-600">Reçu</CardTitle>
+                <ArrowDownLeft className="w-4 h-4 text-success" />
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="text-2xl font-bold text-slate-800">{formatCurrency(stats.totalReceived)}</div>
+              <p className="text-xs text-slate-500 mt-1">{stats.completedTransfers} terminés</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white/90 backdrop-blur-sm p-4 rounded-2xl shadow-medium border-0">
+            <CardHeader className="p-0 pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium text-slate-600">En attente</CardTitle>
+                <Clock className="w-4 h-4 text-warning" />
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="text-2xl font-bold text-slate-800">{stats.pendingTransfers}</div>
+              <p className="text-xs text-slate-500 mt-1">À traiter</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white/90 backdrop-blur-sm p-4 rounded-2xl shadow-medium border-0">
+            <CardHeader className="p-0 pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium text-slate-600">Ce mois</CardTitle>
+                <Activity className="w-4 h-4 text-info" />
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="text-2xl font-bold text-slate-800">{stats.thisMonthTransfers}</div>
+              <p className="text-xs text-slate-500 mt-1">Transactions</p>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Quick Stats */}
-        <Card className="bg-white/90 backdrop-blur-sm p-4 rounded-2xl shadow-medium mb-6 border-0">
-          <div className="text-center">
-            <h3 className="text-sm font-semibold text-slate-800 mb-2">
-              Votre compte est sécurisé 🔒
-            </h3>
-            <p className="text-xs text-slate-600 mb-3">
-              Tous vos transferts sont protégés par un cryptage de niveau bancaire.
-            </p>
-            <p className="text-xs text-slate-500">
-              Assistance disponible 24h/7j
-            </p>
-          </div>
-        </Card>
-
-        {/* Recent Activity */}
-        <Card className="bg-white/90 backdrop-blur-sm p-4 rounded-2xl shadow-medium border-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-gradient-accent rounded-full flex items-center justify-center shadow-medium">
-                <ArrowUpRight className="w-4 h-4 text-white" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-slate-800">Dernier transfert</p>
-                {lastTransfer ? (
-                  <p className="text-xs text-slate-500">
-                    {new Date(lastTransfer.created_at).toLocaleDateString()} - {lastTransfer.reference_number}
-                  </p>
-                ) : (
-                  <p className="text-xs text-slate-500">Aucun transfert récent</p>
-                )}
-              </div>
-            </div>
-            <div className="text-right">
-              {lastTransfer ? (
-                <>
-                  <span className={`font-semibold ${lastTransfer.status === 'completed' ? 'text-success' : 'text-orange-600'}`}>
-                    {formatCurrency(lastTransfer.amount)}
-                  </span>
-                  <Badge className={`ml-2 text-xs ${lastTransfer.status === 'completed' ? 'bg-success/10 text-success' : 'bg-orange-100 text-orange-600'}`}>
-                    {lastTransfer.status === 'completed' ? 'Terminé' : 'En attente'}
-                  </Badge>
-                </>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          {/* Recent Transactions */}
+          <Card className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-medium border-0">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg font-semibold text-slate-800 flex items-center justify-between">
+                <span>Transactions récentes</span>
+                <Link to="/history" className="text-sm text-primary hover:underline font-normal">
+                  Voir tout
+                </Link>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {recentTransfers.length > 0 ? (
+                <div className="space-y-3">
+                  {recentTransfers.map((transfer) => (
+                    <div key={transfer.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                          transfer.status === 'completed' ? 'bg-success/10' : 
+                          transfer.status === 'pending' ? 'bg-warning/10' : 'bg-slate-200'
+                        }`}>
+                          {transfer.status === 'completed' ? (
+                            <CheckCircle2 className="w-5 h-5 text-success" />
+                          ) : transfer.status === 'pending' ? (
+                            <Clock className="w-5 h-5 text-warning" />
+                          ) : (
+                            <DollarSign className="w-5 h-5 text-slate-500" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-slate-800">{transfer.reference_number}</p>
+                          <p className="text-xs text-slate-500">
+                            {new Date(transfer.created_at).toLocaleDateString('fr-FR')}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-semibold text-slate-800">
+                          {formatCurrency(Number(transfer.amount))}
+                        </p>
+                        <Badge 
+                          variant="outline"
+                          className={`text-xs ${
+                            transfer.status === 'completed' ? 'bg-success/10 text-success border-success/20' :
+                            transfer.status === 'pending' ? 'bg-warning/10 text-warning border-warning/20' :
+                            'bg-slate-100 text-slate-600 border-slate-200'
+                          }`}
+                        >
+                          {transfer.status === 'completed' ? 'Terminé' : 
+                           transfer.status === 'pending' ? 'En attente' : transfer.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : (
-                <span className="text-slate-400">-</span>
+                <div className="text-center py-8 text-slate-500">
+                  <Activity className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">Aucune transaction récente</p>
+                </div>
               )}
-            </div>
-          </div>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* Notification Badge */}
-        {stats.pendingTransfers > 0 && (
-          <div className="fixed top-4 right-4 z-40">
-            <Badge className="bg-destructive text-destructive-foreground animate-pulse shadow-medium">
-              {stats.pendingTransfers} en attente
-            </Badge>
+          {/* Quick Actions & Info */}
+          <div className="space-y-4">
+            {/* Services Grid */}
+            <Card className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-medium border-0">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-slate-800">Actions rapides</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-3">
+                  <Link 
+                    to="/transfer"
+                    className="flex flex-col items-center p-4 bg-gradient-primary rounded-xl hover:opacity-90 transition-all shadow-medium text-white"
+                  >
+                    <ArrowUpRight className="w-8 h-8 mb-2" />
+                    <span className="text-sm font-medium">Transfert</span>
+                  </Link>
+                  <Link 
+                    to="/recipients"
+                    className="flex flex-col items-center p-4 bg-gradient-secondary rounded-xl hover:opacity-90 transition-all shadow-medium text-white"
+                  >
+                    <Users className="w-8 h-8 mb-2" />
+                    <span className="text-sm font-medium">Bénéficiaires</span>
+                  </Link>
+                  <Link 
+                    to="/history"
+                    className="flex flex-col items-center p-4 bg-gradient-accent rounded-xl hover:opacity-90 transition-all shadow-medium text-white"
+                  >
+                    <History className="w-8 h-8 mb-2" />
+                    <span className="text-sm font-medium">Historique</span>
+                  </Link>
+                  <Link 
+                    to="/profile"
+                    className="flex flex-col items-center p-4 bg-gradient-hero rounded-xl hover:opacity-90 transition-all shadow-medium text-white"
+                  >
+                    <Settings className="w-8 h-8 mb-2" />
+                    <span className="text-sm font-medium">Profil</span>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Security Info */}
+            <Card className="bg-white/90 backdrop-blur-sm p-4 rounded-2xl shadow-medium border-0">
+              <div className="text-center">
+                <div className="w-12 h-12 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <CheckCircle2 className="w-6 h-6 text-success" />
+                </div>
+                <h3 className="text-sm font-semibold text-slate-800 mb-2">
+                  Compte sécurisé 🔒
+                </h3>
+                <p className="text-xs text-slate-600 mb-3">
+                  Tous vos transferts sont protégés par un cryptage de niveau bancaire.
+                </p>
+                <p className="text-xs text-slate-500">
+                  Assistance disponible 24h/7j
+                </p>
+              </div>
+            </Card>
+
+            {/* Savings Card */}
+            <Card className="bg-gradient-secondary backdrop-blur-sm p-4 rounded-2xl shadow-medium border-0 text-white">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-medium">
+                    <TrendingUp className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-white/90">Épargne</p>
+                    <p className="text-2xl font-bold text-white">12.000 F</p>
+                  </div>
+                </div>
+                <Button 
+                  size="sm"
+                  className="bg-white text-primary hover:bg-white/90 rounded-xl"
+                >
+                  Ajouter
+                </Button>
+              </div>
+            </Card>
           </div>
-        )}
+        </div>
       </div>
       
       {/* Bottom Navigation */}

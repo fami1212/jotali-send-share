@@ -246,6 +246,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_admin_by_email: {
+        Args: { admin_role?: string; user_email: string }
+        Returns: undefined
+      }
       generate_reference_number: {
         Args: Record<PropertyKey, never>
         Returns: string
