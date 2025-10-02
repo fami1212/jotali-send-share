@@ -27,12 +27,17 @@ interface Transfer {
   proof_image_url?: string;
   admin_notes?: string;
   created_at: string;
+  completed_at?: string;
   user_id: string;
   recipient_id: string;
+  fees: number;
+  total_amount: number;
   recipients?: {
     name: string;
     phone: string;
     country: string;
+    bank_account?: string;
+    wave_number?: string;
   };
   profiles?: {
     first_name?: string;
@@ -128,7 +133,7 @@ const Admin = () => {
       const recipientIds = [...new Set(data?.map(t => t.recipient_id).filter(Boolean) || [])];
       const { data: recipients, error: recipientsError } = await supabase
         .from('recipients')
-        .select('id, name, phone, country')
+        .select('id, name, phone, country, bank_account, wave_number')
         .in('id', recipientIds);
 
       if (recipientsError) {
@@ -307,36 +312,109 @@ const Admin = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 p-4 bg-slate-50 rounded-xl">
-                    <div>
-                      <p className="text-xs text-slate-500 mb-1">Téléphone</p>
-                      <p className="font-semibold text-slate-800 text-sm">
-                        {transfer.recipients?.phone || '-'}
-                      </p>
+                  <div className="space-y-4 mb-4">
+                    {/* Informations du bénéficiaire */}
+                    <div className="p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
+                      <p className="text-xs font-semibold text-blue-700 mb-3">INFORMATIONS DU BÉNÉFICIAIRE</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <p className="text-xs text-slate-500 mb-1">Nom complet</p>
+                          <p className="font-semibold text-slate-800 text-sm">
+                            {transfer.recipients?.name || 'Retrait personnel'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500 mb-1">Téléphone</p>
+                          <p className="font-semibold text-slate-800 text-sm">
+                            {transfer.recipients?.phone || '-'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500 mb-1">Pays</p>
+                          <p className="font-semibold text-slate-800 text-sm">
+                            {transfer.recipients?.country || '-'}
+                          </p>
+                        </div>
+                        {transfer.transfer_method === 'bank' && transfer.recipients?.bank_account && (
+                          <div>
+                            <p className="text-xs text-slate-500 mb-1">Compte bancaire</p>
+                            <p className="font-semibold text-green-700 text-sm">
+                              {transfer.recipients.bank_account}
+                            </p>
+                          </div>
+                        )}
+                        {transfer.transfer_method === 'wave' && transfer.recipients?.wave_number && (
+                          <div>
+                            <p className="text-xs text-slate-500 mb-1">Numéro Wave</p>
+                            <p className="font-semibold text-green-700 text-sm">
+                              {transfer.recipients.wave_number}
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs text-slate-500 mb-1">Pays</p>
-                      <p className="font-semibold text-slate-800 text-sm">
-                        {transfer.recipients?.country || '-'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 mb-1">Méthode</p>
-                      <p className="font-semibold text-slate-800 text-sm capitalize">
-                        {transfer.transfer_method === 'bank' ? 'Virement bancaire' : 'Wave'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 mb-1">Date de création</p>
-                      <p className="font-semibold text-slate-800 text-sm">
-                        {new Date(transfer.created_at).toLocaleString('fr-FR', {
-                          day: '2-digit',
-                          month: 'short',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </p>
+
+                    {/* Détails de la transaction */}
+                    <div className="p-4 bg-slate-50 rounded-xl">
+                      <p className="text-xs font-semibold text-slate-700 mb-3">DÉTAILS DE LA TRANSACTION</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <div>
+                          <p className="text-xs text-slate-500 mb-1">Méthode</p>
+                          <p className="font-semibold text-slate-800 text-sm capitalize">
+                            {transfer.transfer_method === 'bank' ? 'Virement bancaire' : 'Wave'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500 mb-1">Frais</p>
+                          <p className="font-semibold text-slate-800 text-sm">
+                            {new Intl.NumberFormat('fr-FR', {
+                              style: 'currency',
+                              currency: transfer.from_currency === 'CFA' ? 'XOF' : 'MAD',
+                            }).format(transfer.fees)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500 mb-1">Montant total</p>
+                          <p className="font-semibold text-slate-800 text-sm">
+                            {new Intl.NumberFormat('fr-FR', {
+                              style: 'currency',
+                              currency: transfer.from_currency === 'CFA' ? 'XOF' : 'MAD',
+                            }).format(transfer.total_amount)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500 mb-1">Date de création</p>
+                          <p className="font-semibold text-slate-800 text-sm">
+                            {new Date(transfer.created_at).toLocaleString('fr-FR', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
+                        </div>
+                        {transfer.completed_at && (
+                          <div>
+                            <p className="text-xs text-slate-500 mb-1">Date de complétion</p>
+                            <p className="font-semibold text-green-700 text-sm">
+                              {new Date(transfer.completed_at).toLocaleString('fr-FR', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </p>
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-xs text-slate-500 mb-1">Taux de change</p>
+                          <p className="font-semibold text-slate-800 text-sm">
+                            1 {transfer.from_currency} = {transfer.exchange_rate} {transfer.to_currency}
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
