@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { ArrowRightLeft, Search, Filter, Eye } from 'lucide-react';
+import { ArrowRightLeft, Search, Filter, Eye, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import Navbar from '@/components/Navbar';
@@ -36,6 +37,7 @@ const History = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [loading, setLoading] = useState(true);
+  const [selectedTransfer, setSelectedTransfer] = useState<Transfer | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -228,15 +230,15 @@ const History = () => {
           {filteredTransfers.length > 0 ? (
             filteredTransfers.map((transfer) => (
               <Card key={transfer.id} className="bg-white/95 backdrop-blur-sm p-4 rounded-2xl shadow-medium border-0 hover:shadow-strong transition-all duration-200">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-12 h-12 bg-gradient-primary rounded-2xl flex items-center justify-center shadow-medium">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                  <div className="flex items-start space-x-3 flex-1 min-w-0">
+                    <div className="w-12 h-12 bg-gradient-primary rounded-2xl flex items-center justify-center shadow-medium flex-shrink-0">
                       <ArrowRightLeft className="w-5 h-5 text-white" />
                     </div>
                     
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <h3 className="font-semibold text-slate-800 text-sm truncate">
+                      <div className="flex items-center flex-wrap gap-2 mb-1">
+                        <h3 className="font-semibold text-slate-800 text-sm">
                           {transfer.reference_number}
                         </h3>
                         <Badge className={`text-xs ${getStatusColor(transfer.status)}`}>
@@ -245,11 +247,11 @@ const History = () => {
                       </div>
                       
                       <div className="space-y-1 text-xs text-slate-600">
-                        <div>
+                        <div className="break-words">
                           {formatCurrency(transfer.amount, transfer.from_currency)} → {formatCurrency(transfer.converted_amount, transfer.to_currency)}
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <span className="truncate">{transfer.recipients?.name || 'Retrait personnel'}</span>
+                        <div className="flex items-center flex-wrap gap-1">
+                          <span className="truncate max-w-[150px]">{transfer.recipients?.name || 'Retrait personnel'}</span>
                           <span>•</span>
                           <span className="capitalize">{transfer.transfer_method === 'bank' ? 'Virement' : 'Wave'}</span>
                         </div>
@@ -257,13 +259,18 @@ const History = () => {
                     </div>
                   </div>
                   
-                  <div className="text-right">
-                    <div className="text-xs text-slate-500 mb-2">
+                  <div className="flex items-center justify-between md:flex-col md:items-end gap-2 md:gap-2">
+                    <div className="text-xs text-slate-500 whitespace-nowrap">
                       {formatDate(transfer.created_at)}
                     </div>
-                    <Button variant="ghost" size="sm" className="text-xs h-8 px-2 text-slate-600 hover:text-primary">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-xs h-8 px-3 text-slate-600 hover:text-primary"
+                      onClick={() => setSelectedTransfer(transfer)}
+                    >
                       <Eye className="w-3 h-3 mr-1" />
-                      Détails
+                      <span className="hidden sm:inline">Détails</span>
                     </Button>
                   </div>
                 </div>
@@ -289,6 +296,101 @@ const History = () => {
         </div>
       </div>
       
+      {/* Transfer Details Dialog */}
+      <Dialog open={!!selectedTransfer} onOpenChange={() => setSelectedTransfer(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-slate-800">
+              Détails du transfert
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedTransfer && (
+            <div className="space-y-4">
+              <div className="bg-slate-50 rounded-xl p-4 space-y-3">
+                <div className="flex justify-between items-start">
+                  <span className="text-sm text-slate-600">Référence</span>
+                  <span className="font-semibold text-slate-800">{selectedTransfer.reference_number}</span>
+                </div>
+                
+                <div className="flex justify-between items-start">
+                  <span className="text-sm text-slate-600">Statut</span>
+                  <Badge className={getStatusColor(selectedTransfer.status)}>
+                    {getStatusText(selectedTransfer.status)}
+                  </Badge>
+                </div>
+                
+                <div className="border-t border-slate-200 pt-3">
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="text-sm text-slate-600">Montant envoyé</span>
+                    <span className="font-semibold text-slate-800">
+                      {formatCurrency(selectedTransfer.amount, selectedTransfer.from_currency)}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between items-start">
+                    <span className="text-sm text-slate-600">Montant reçu</span>
+                    <span className="font-semibold text-success">
+                      {formatCurrency(selectedTransfer.converted_amount, selectedTransfer.to_currency)}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="border-t border-slate-200 pt-3">
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="text-sm text-slate-600">Destinataire</span>
+                    <span className="font-semibold text-slate-800 text-right">
+                      {selectedTransfer.recipients?.name || 'Retrait personnel'}
+                    </span>
+                  </div>
+                  
+                  {selectedTransfer.recipients?.phone && (
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-sm text-slate-600">Téléphone</span>
+                      <span className="font-semibold text-slate-800">
+                        {selectedTransfer.recipients.phone}
+                      </span>
+                    </div>
+                  )}
+                  
+                  <div className="flex justify-between items-start">
+                    <span className="text-sm text-slate-600">Méthode</span>
+                    <span className="font-semibold text-slate-800 capitalize">
+                      {selectedTransfer.transfer_method === 'bank' ? 'Virement bancaire' : 'Wave'}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="border-t border-slate-200 pt-3">
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="text-sm text-slate-600">Date de création</span>
+                    <span className="font-semibold text-slate-800 text-right text-xs">
+                      {formatDate(selectedTransfer.created_at)}
+                    </span>
+                  </div>
+                  
+                  {selectedTransfer.completed_at && (
+                    <div className="flex justify-between items-start">
+                      <span className="text-sm text-slate-600">Date de finalisation</span>
+                      <span className="font-semibold text-slate-800 text-right text-xs">
+                        {formatDate(selectedTransfer.completed_at)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <Button 
+                onClick={() => setSelectedTransfer(null)}
+                className="w-full bg-gradient-primary hover:opacity-90 text-white"
+              >
+                Fermer
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Bottom Navigation */}
       <BottomNavigation />
     </div>

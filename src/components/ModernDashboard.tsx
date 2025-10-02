@@ -28,9 +28,9 @@ interface DashboardStats {
   totalReceived: number;
   pendingTransfers: number;
   completedTransfers: number;
-  balance: number;
   totalTransactions: number;
   thisMonthTransfers: number;
+  avgTransferAmount: number;
 }
 
 interface Transfer {
@@ -50,9 +50,9 @@ const ModernDashboard = () => {
     totalReceived: 0,
     pendingTransfers: 0,
     completedTransfers: 0,
-    balance: 50000,
     totalTransactions: 0,
-    thisMonthTransfers: 0
+    thisMonthTransfers: 0,
+    avgTransferAmount: 0,
   });
   const [recentTransfers, setRecentTransfers] = useState<Transfer[]>([]);
 
@@ -92,24 +92,19 @@ const ModernDashboard = () => {
           return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
         }).length;
         
-        // Calculer le solde dynamique
-        const baseBalance = 50000;
-        const completedTransfers = transfers.filter(t => t.status === 'completed');
-        const balance = completedTransfers.reduce((sum, t) => {
-          if (t.transfer_type === 'withdrawal' || t.transfer_type === 'exchange' || t.transfer_type === 'transfer') {
-            return sum - Number(t.amount);
-          }
-          return sum;
-        }, baseBalance);
+        // Calculer le montant moyen par transfert
+        const avgTransferAmount = transfers.length > 0 
+          ? transfers.reduce((sum, t) => sum + Number(t.amount), 0) / transfers.length 
+          : 0;
 
         setStats({
           totalSent: sent,
           totalReceived: received,
           pendingTransfers: pending,
           completedTransfers: completed,
-          balance: Math.max(balance, 0),
           totalTransactions: transfers.length,
-          thisMonthTransfers: thisMonth
+          thisMonthTransfers: thisMonth,
+          avgTransferAmount,
         });
       }
     } catch (error) {
@@ -176,18 +171,19 @@ const ModernDashboard = () => {
           </Button>
         </div>
 
-        {/* Balance Card - Hero */}
+        {/* Stats Card - Hero */}
         <Card className="bg-gradient-primary backdrop-blur-sm p-8 rounded-3xl shadow-strong mb-6 border-0 text-white">
           <div className="flex items-start justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center shadow-medium">
-                <Wallet className="w-8 h-8 text-white" />
+                <TrendingUp className="w-8 h-8 text-white" />
               </div>
               <div>
-                <p className="text-sm text-white/80 mb-1">Solde disponible</p>
-                <h2 className="text-5xl font-bold text-white">
-                  {formatCurrency(stats.balance)}
+                <p className="text-sm text-white/80 mb-1">Montant moyen par transfert</p>
+                <h2 className="text-4xl font-bold text-white">
+                  {formatCurrency(stats.avgTransferAmount)}
                 </h2>
+                <p className="text-xs text-white/70 mt-1">Basé sur {stats.totalTransactions} transferts</p>
               </div>
             </div>
           </div>

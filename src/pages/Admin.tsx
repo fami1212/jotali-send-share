@@ -18,6 +18,7 @@ interface Transfer {
   from_currency: string;
   to_currency: string;
   converted_amount: number;
+  exchange_rate: number;
   transfer_type: string;
   transfer_method: string;
   status: string;
@@ -249,55 +250,117 @@ const Admin = () => {
         {isLoading ? (
           <div className="text-center py-8">Chargement...</div>
         ) : (
-          <div className="grid gap-4">
+          <div className="space-y-4">
             {transfers.map((transfer) => (
-              <Card key={transfer.id} className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-4">
-                      <h3 className="font-semibold text-lg">
-                        {transfer.reference_number}
-                      </h3>
-                      <Badge className={getStatusColor(transfer.status)}>
-                        {getStatusText(transfer.status)}
-                      </Badge>
-                      <Badge variant="outline">
-                        {transfer.transfer_type === 'transfer' ? 'Envoi' : 
-                         transfer.transfer_type === 'withdrawal' ? 'Retrait' :
-                         transfer.transfer_type === 'exchange' ? 'Échange' : 'Transfert'}
-                      </Badge>
+              <Card key={transfer.id} className="bg-white/95 backdrop-blur-sm shadow-medium border-0 hover:shadow-strong transition-shadow">
+                <div className="p-6">
+                  <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 mb-6">
+                    <div className="space-y-3 flex-1">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <h3 className="text-lg font-bold text-slate-800">
+                          {transfer.reference_number}
+                        </h3>
+                        <Badge className={getStatusColor(transfer.status)}>
+                          {getStatusText(transfer.status)}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {transfer.transfer_type === 'transfer' ? 'Envoi' : 
+                           transfer.transfer_type === 'withdrawal' ? 'Retrait' :
+                           transfer.transfer_type === 'exchange' ? 'Échange' : 'Transfert'}
+                        </Badge>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <span className="text-slate-500">Client: </span>
+                          <span className="font-semibold text-slate-800">
+                            {transfer.profiles?.first_name} {transfer.profiles?.last_name}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500">Bénéficiaire: </span>
+                          <span className="font-semibold text-slate-800">
+                            {transfer.recipients?.name || 'Retrait personnel'}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                      <div>
-                        <span className="font-medium">Utilisateur:</span> {transfer.profiles?.first_name} {transfer.profiles?.last_name}
-                      </div>
-                      <div>
-                        <span className="font-medium">Bénéficiaire:</span> {transfer.recipients?.name}
-                      </div>
-                      <div>
-                        <span className="font-medium">Montant:</span> {transfer.amount} {transfer.from_currency} → {transfer.converted_amount} {transfer.to_currency}
-                      </div>
+                    <div className="text-left lg:text-right bg-gradient-to-br from-slate-50 to-slate-100 p-4 rounded-xl">
+                      <p className="text-xs text-slate-500 mb-1">Montant envoyé</p>
+                      <p className="text-2xl font-bold text-slate-800 mb-2">
+                        {new Intl.NumberFormat('fr-FR', {
+                          style: 'currency',
+                          currency: transfer.from_currency === 'CFA' ? 'XOF' : 'MAD',
+                        }).format(transfer.amount)}
+                      </p>
+                      <p className="text-xs text-slate-500">Montant reçu</p>
+                      <p className="text-lg font-semibold text-green-600">
+                        {new Intl.NumberFormat('fr-FR', {
+                          style: 'currency',
+                          currency: transfer.to_currency === 'CFA' ? 'XOF' : 'MAD',
+                        }).format(transfer.converted_amount)}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-2">
+                        Taux: {transfer.exchange_rate}
+                      </p>
                     </div>
-                    
-                    <div className="text-sm text-muted-foreground">
-                      Créé le: {new Date(transfer.created_at).toLocaleDateString('fr-FR')}
-                    </div>
-
-                    {transfer.notes && (
-                      <div className="text-sm">
-                        <span className="font-medium">Notes:</span> {transfer.notes}
-                      </div>
-                    )}
                   </div>
 
-                  <div className="flex items-center space-x-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 p-4 bg-slate-50 rounded-xl">
+                    <div>
+                      <p className="text-xs text-slate-500 mb-1">Téléphone</p>
+                      <p className="font-semibold text-slate-800 text-sm">
+                        {transfer.recipients?.phone || '-'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500 mb-1">Pays</p>
+                      <p className="font-semibold text-slate-800 text-sm">
+                        {transfer.recipients?.country || '-'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500 mb-1">Méthode</p>
+                      <p className="font-semibold text-slate-800 text-sm capitalize">
+                        {transfer.transfer_method === 'bank' ? 'Virement bancaire' : 'Wave'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500 mb-1">Date de création</p>
+                      <p className="font-semibold text-slate-800 text-sm">
+                        {new Date(transfer.created_at).toLocaleString('fr-FR', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </p>
+                    </div>
+                  </div>
+
+                  {transfer.notes && (
+                    <div className="mb-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded">
+                      <p className="text-xs text-slate-500 mb-1">Notes du client</p>
+                      <p className="text-sm font-medium text-slate-800">{transfer.notes}</p>
+                    </div>
+                  )}
+
+                  {transfer.admin_notes && (
+                    <div className="mb-4 p-3 bg-amber-50 border-l-4 border-amber-500 rounded">
+                      <p className="text-xs text-slate-500 mb-1">Notes administrateur</p>
+                      <p className="text-sm font-medium text-slate-800">{transfer.admin_notes}</p>
+                    </div>
+                  )}
+
+                  <div className="flex flex-col sm:flex-row gap-2">
                     {transfer.proof_image_url && (
                       <Dialog>
                         <DialogTrigger asChild>
-                          <Button variant="outline" size="sm">
+                          <Button variant="outline" size="sm" className="flex-1">
                             <FileImage className="w-4 h-4 mr-2" />
-                            Preuve
+                            Voir la preuve de paiement
                           </Button>
                         </DialogTrigger>
                         <DialogContent className="max-w-2xl">
@@ -308,7 +371,7 @@ const Admin = () => {
                             <img 
                               src={`${supabase.storage.from('transfer-proofs').getPublicUrl(transfer.proof_image_url).data.publicUrl}`}
                               alt="Preuve de paiement"
-                              className="max-w-full max-h-96 object-contain"
+                              className="max-w-full max-h-96 object-contain rounded-lg"
                             />
                           </div>
                         </DialogContent>
@@ -318,15 +381,15 @@ const Admin = () => {
                     <Dialog open={selectedTransfer?.id === transfer.id} onOpenChange={(open) => !open && setSelectedTransfer(null)}>
                       <DialogTrigger asChild>
                         <Button 
-                          variant="outline" 
                           size="sm"
+                          className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
                           onClick={() => {
                             setSelectedTransfer(transfer);
                             setAdminNotes(transfer.admin_notes || '');
                           }}
                         >
-                          <Eye className="w-4 h-4 mr-2" />
-                          Gérer
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Gérer ce transfert
                         </Button>
                       </DialogTrigger>
                       <DialogContent className="max-w-md">
@@ -345,12 +408,12 @@ const Admin = () => {
                             />
                           </div>
                           
-                          <div className="flex space-x-2">
+                          <div className="flex flex-col gap-2">
                             {transfer.status === 'awaiting_admin' && (
-                              <>
+                              <div className="flex gap-2">
                                 <Button
                                   onClick={() => updateTransferStatus(transfer.id, 'approved', adminNotes)}
-                                  className="flex-1"
+                                  className="flex-1 bg-green-600 hover:bg-green-700"
                                 >
                                   <CheckCircle className="w-4 h-4 mr-2" />
                                   Approuver
@@ -363,27 +426,47 @@ const Admin = () => {
                                   <XCircle className="w-4 h-4 mr-2" />
                                   Rejeter
                                 </Button>
-                              </>
+                              </div>
                             )}
                             
                             {transfer.status === 'approved' && (
                               <Button
                                 onClick={() => updateTransferStatus(transfer.id, 'completed', adminNotes)}
-                                className="w-full"
+                                className="w-full bg-green-600 hover:bg-green-700"
                               >
                                 <CheckCircle className="w-4 h-4 mr-2" />
-                                Marquer terminé
+                                Marquer comme terminé
                               </Button>
                             )}
+
+                            {transfer.status === 'pending' && (
+                              <div className="flex gap-2">
+                                <Button
+                                  onClick={() => updateTransferStatus(transfer.id, 'approved', adminNotes)}
+                                  className="flex-1 bg-green-600 hover:bg-green-700"
+                                >
+                                  <CheckCircle className="w-4 h-4 mr-2" />
+                                  Approuver
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  onClick={() => updateTransferStatus(transfer.id, 'cancelled', adminNotes)}
+                                  className="flex-1"
+                                >
+                                  <XCircle className="w-4 h-4 mr-2" />
+                                  Annuler
+                                </Button>
+                              </div>
+                            )}
                             
-                            {(transfer.status === 'pending' || transfer.status === 'approved') && (
+                            {(transfer.status === 'approved') && (
                               <Button
                                 variant="outline"
                                 onClick={() => updateTransferStatus(transfer.id, 'cancelled', adminNotes)}
-                                className="flex-1"
+                                className="w-full"
                               >
                                 <XCircle className="w-4 h-4 mr-2" />
-                                Annuler
+                                Annuler le transfert
                               </Button>
                             )}
                           </div>
@@ -396,9 +479,15 @@ const Admin = () => {
             ))}
 
             {transfers.length === 0 && (
-              <div className="text-center py-12 text-muted-foreground">
-                Aucun transfert trouvé
-              </div>
+              <Card className="bg-white/95 backdrop-blur-sm p-12 text-center shadow-medium border-0">
+                <XCircle className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-slate-700 mb-2">Aucun transfert trouvé</h3>
+                <p className="text-sm text-slate-500">
+                  {statusFilter !== 'all' 
+                    ? 'Essayez de modifier le filtre de statut'
+                    : 'Aucun transfert en attente de traitement'}
+                </p>
+              </Card>
             )}
           </div>
         )}
