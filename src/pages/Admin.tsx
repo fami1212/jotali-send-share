@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, XCircle, Eye, FileImage } from 'lucide-react';
+import { CheckCircle, XCircle, FileImage, Search, TrendingUp, Clock, DollarSign, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -42,7 +43,18 @@ interface Transfer {
   profiles?: {
     first_name?: string;
     last_name?: string;
+    phone?: string;
+    country?: string;
   } | null;
+  user_email?: string;
+}
+
+interface Stats {
+  total: number;
+  pending: number;
+  awaiting_admin: number;
+  completed: number;
+  totalAmount: number;
 }
 
 const Admin = () => {
@@ -51,11 +63,20 @@ const Admin = () => {
   const { toast } = useToast();
   
   const [transfers, setTransfers] = useState<Transfer[]>([]);
+  const [filteredTransfers, setFilteredTransfers] = useState<Transfer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTransfer, setSelectedTransfer] = useState<Transfer | null>(null);
   const [adminNotes, setAdminNotes] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [stats, setStats] = useState<Stats>({
+    total: 0,
+    pending: 0,
+    awaiting_admin: 0,
+    completed: 0,
+    totalAmount: 0,
+  });
 
   useEffect(() => {
     checkAdminStatus();
@@ -66,6 +87,10 @@ const Admin = () => {
       loadTransfers();
     }
   }, [isAdmin, statusFilter]);
+
+  useEffect(() => {
+    filterTransfers();
+  }, [transfers, searchQuery]);
 
   const checkAdminStatus = async () => {
     if (!user?.id) {
@@ -122,11 +147,20 @@ const Admin = () => {
       const userIds = [...new Set(data?.map(t => t.user_id) || [])];
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('user_id, first_name, last_name')
+        .select('user_id, first_name, last_name, phone, country')
         .in('user_id', userIds);
 
       if (profilesError) {
         console.error('Error loading profiles:', profilesError);
+      }
+
+      // Get user emails from auth.users
+      let users: any[] = [];
+      try {
+        const { data } = await supabase.auth.admin.listUsers();
+        users = data?.users || [];
+      } catch (error) {
+        console.error('Error loading users:', error);
       }
 
       // Get recipients
@@ -141,13 +175,20 @@ const Admin = () => {
       }
 
       // Merge data
-      const enhancedTransfers = data?.map(transfer => ({
-        ...transfer,
-        profiles: profiles?.find(p => p.user_id === transfer.user_id) || null,
-        recipients: recipients?.find(r => r.id === transfer.recipient_id) || null
-      })) || [];
+      const enhancedTransfers = data?.map(transfer => {
+        const userProfile = profiles?.find(p => p.user_id === transfer.user_id);
+        const userAuth = users?.find(u => u.id === transfer.user_id);
+        
+        return {
+          ...transfer,
+          profiles: userProfile || null,
+          recipients: recipients?.find(r => r.id === transfer.recipient_id) || null,
+          user_email: userAuth?.email || 'N/A'
+        };
+      }) || [];
 
       setTransfers(enhancedTransfers);
+      calculateStats(enhancedTransfers);
     } catch (error) {
       console.error('Error loading transfers:', error);
       toast({
@@ -158,6 +199,34 @@ const Admin = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const calculateStats = (transfers: Transfer[]) => {
+    const stats = {
+      total: transfers.length,
+      pending: transfers.filter(t => t.status === 'pending').length,
+      awaiting_admin: transfers.filter(t => t.status === 'awaiting_admin').length,
+      completed: transfers.filter(t => t.status === 'completed').length,
+      totalAmount: transfers.reduce((sum, t) => sum + Number(t.amount), 0),
+    };
+    setStats(stats);
+  };
+
+  const filterTransfers = () => {
+    if (!searchQuery.trim()) {
+      setFilteredTransfers(transfers);
+      return;
+    }
+
+    const query = searchQuery.toLowerCase();
+    const filtered = transfers.filter(transfer => 
+      transfer.reference_number.toLowerCase().includes(query) ||
+      transfer.user_email?.toLowerCase().includes(query) ||
+      `${transfer.profiles?.first_name} ${transfer.profiles?.last_name}`.toLowerCase().includes(query) ||
+      transfer.recipients?.name?.toLowerCase().includes(query) ||
+      transfer.recipients?.phone?.includes(query)
+    );
+    setFilteredTransfers(filtered);
   };
 
   const updateTransferStatus = async (transferId: string, newStatus: string, notes?: string) => {
@@ -236,9 +305,77 @@ const Admin = () => {
           </p>
         </div>
 
-        <div className="mb-6 flex justify-between items-center">
+        {/* Statistiques */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+          <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-4 shadow-strong">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs opacity-90 mb-1">Total</p>
+                <p className="text-2xl font-bold">{stats.total}</p>
+              </div>
+              <Users className="w-8 h-8 opacity-80" />
+            </div>
+          </Card>
+          
+          <Card className="bg-gradient-to-br from-amber-500 to-orange-600 text-white p-4 shadow-strong">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs opacity-90 mb-1">En attente admin</p>
+                <p className="text-2xl font-bold">{stats.awaiting_admin}</p>
+              </div>
+              <Clock className="w-8 h-8 opacity-80" />
+            </div>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-white p-4 shadow-strong">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs opacity-90 mb-1">En attente</p>
+                <p className="text-2xl font-bold">{stats.pending}</p>
+              </div>
+              <Clock className="w-8 h-8 opacity-80" />
+            </div>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white p-4 shadow-strong">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs opacity-90 mb-1">Terminés</p>
+                <p className="text-2xl font-bold">{stats.completed}</p>
+              </div>
+              <CheckCircle className="w-8 h-8 opacity-80" />
+            </div>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-4 shadow-strong">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs opacity-90 mb-1">Montant total</p>
+                <p className="text-lg font-bold">
+                  {new Intl.NumberFormat('fr-FR', {
+                    notation: 'compact',
+                    maximumFractionDigits: 1
+                  }).format(stats.totalAmount)}
+                </p>
+              </div>
+              <DollarSign className="w-8 h-8 opacity-80" />
+            </div>
+          </Card>
+        </div>
+
+        {/* Filtres et recherche */}
+        <div className="mb-6 flex flex-col sm:flex-row gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input
+              placeholder="Rechercher par référence, email, nom, téléphone..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-64">
+            <SelectTrigger className="w-full sm:w-64">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -256,7 +393,7 @@ const Admin = () => {
           <div className="text-center py-8">Chargement...</div>
         ) : (
           <div className="space-y-4">
-            {transfers.map((transfer) => (
+            {filteredTransfers.map((transfer) => (
               <Card key={transfer.id} className="bg-white/95 backdrop-blur-sm shadow-medium border-0 hover:shadow-strong transition-shadow">
                 <div className="p-6">
                   <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 mb-6">
@@ -313,10 +450,41 @@ const Admin = () => {
                   </div>
 
                   <div className="space-y-4 mb-4">
+                    {/* Informations du client (envoyeur) */}
+                    <div className="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 border-l-4 border-indigo-500 rounded">
+                      <p className="text-xs font-semibold text-indigo-700 mb-3">👤 INFORMATIONS DU CLIENT (ENVOYEUR)</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <div>
+                          <p className="text-xs text-slate-500 mb-1">Nom complet</p>
+                          <p className="font-semibold text-slate-800 text-sm">
+                            {transfer.profiles?.first_name} {transfer.profiles?.last_name}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500 mb-1">Email</p>
+                          <p className="font-semibold text-indigo-700 text-sm">
+                            {transfer.user_email}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500 mb-1">Téléphone</p>
+                          <p className="font-semibold text-slate-800 text-sm">
+                            {transfer.profiles?.phone || 'Non renseigné'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500 mb-1">Pays</p>
+                          <p className="font-semibold text-slate-800 text-sm">
+                            {transfer.profiles?.country || 'Non renseigné'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Informations du bénéficiaire */}
                     <div className="p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
-                      <p className="text-xs font-semibold text-blue-700 mb-3">INFORMATIONS DU BÉNÉFICIAIRE</p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <p className="text-xs font-semibold text-blue-700 mb-3">📩 INFORMATIONS DU BÉNÉFICIAIRE</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         <div>
                           <p className="text-xs text-slate-500 mb-1">Nom complet</p>
                           <p className="font-semibold text-slate-800 text-sm">
@@ -556,7 +724,17 @@ const Admin = () => {
               </Card>
             ))}
 
-            {transfers.length === 0 && (
+            {filteredTransfers.length === 0 && transfers.length > 0 && (
+              <Card className="bg-white/95 backdrop-blur-sm p-12 text-center shadow-medium border-0">
+                <Search className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-slate-700 mb-2">Aucun résultat trouvé</h3>
+                <p className="text-sm text-slate-500">
+                  Essayez de modifier votre recherche ou vos filtres
+                </p>
+              </Card>
+            )}
+
+            {filteredTransfers.length === 0 && transfers.length === 0 && (
               <Card className="bg-white/95 backdrop-blur-sm p-12 text-center shadow-medium border-0">
                 <XCircle className="w-16 h-16 text-slate-300 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-slate-700 mb-2">Aucun transfert trouvé</h3>
