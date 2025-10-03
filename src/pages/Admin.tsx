@@ -147,20 +147,11 @@ const Admin = () => {
       const userIds = [...new Set(data?.map(t => t.user_id) || [])];
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('user_id, first_name, last_name, phone, country')
+        .select('user_id, first_name, last_name, phone, country, email')
         .in('user_id', userIds);
 
       if (profilesError) {
         console.error('Error loading profiles:', profilesError);
-      }
-
-      // Get user emails from auth.users
-      let users: any[] = [];
-      try {
-        const { data } = await supabase.auth.admin.listUsers();
-        users = data?.users || [];
-      } catch (error) {
-        console.error('Error loading users:', error);
       }
 
       // Get recipients
@@ -177,13 +168,12 @@ const Admin = () => {
       // Merge data
       const enhancedTransfers = data?.map(transfer => {
         const userProfile = profiles?.find(p => p.user_id === transfer.user_id);
-        const userAuth = users?.find(u => u.id === transfer.user_id);
         
         return {
           ...transfer,
           profiles: userProfile || null,
           recipients: recipients?.find(r => r.id === transfer.recipient_id) || null,
-          user_email: userAuth?.email || 'N/A'
+          user_email: userProfile?.email || 'N/A'
         };
       }) || [];
 
@@ -391,17 +381,43 @@ const Admin = () => {
 
         {isLoading ? (
           <div className="text-center py-8">Chargement...</div>
+        ) : filteredTransfers.length === 0 ? (
+          <div className="text-center py-12">
+            <Card className="bg-white/95 backdrop-blur-sm p-12 text-center shadow-medium border-0">
+              {transfers.length === 0 ? (
+                <>
+                  <XCircle className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-foreground mb-2">Aucun transfert trouvé</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {statusFilter !== 'all' 
+                      ? 'Essayez de modifier le filtre de statut'
+                      : 'Aucun transfert en attente de traitement'}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <Search className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-foreground mb-2">Aucun résultat trouvé</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Essayez de modifier votre recherche ou vos filtres
+                  </p>
+                </>
+              )}
+            </Card>
+          </div>
         ) : (
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredTransfers.map((transfer) => (
-              <Card key={transfer.id} className="bg-white/95 backdrop-blur-sm shadow-medium border-0 hover:shadow-strong transition-shadow">
-                <div className="p-6">
-                  <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 mb-6">
-                    <div className="space-y-3 flex-1">
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <h3 className="text-lg font-bold text-slate-800">
-                          {transfer.reference_number}
-                        </h3>
+              <Card key={transfer.id} className="bg-white/95 backdrop-blur-sm shadow-medium border-0 hover:shadow-strong transition-all hover:scale-[1.02] flex flex-col">
+                <div className="p-5 flex flex-col flex-1">
+                  {/* Header with status and type */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <p className="text-xs text-muted-foreground mb-1">Référence</p>
+                      <h3 className="text-sm font-bold text-foreground mb-2 truncate">
+                        {transfer.reference_number}
+                      </h3>
+                      <div className="flex gap-2 flex-wrap">
                         <Badge className={getStatusColor(transfer.status)}>
                           {getStatusText(transfer.status)}
                         </Badge>
@@ -411,340 +427,313 @@ const Admin = () => {
                            transfer.transfer_type === 'exchange' ? 'Échange' : 'Transfert'}
                         </Badge>
                       </div>
-                      
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                        <div>
-                          <span className="text-slate-500">Client: </span>
-                          <span className="font-semibold text-slate-800">
-                            {transfer.profiles?.first_name} {transfer.profiles?.last_name}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-slate-500">Bénéficiaire: </span>
-                          <span className="font-semibold text-slate-800">
-                            {transfer.recipients?.name || 'Retrait personnel'}
-                          </span>
-                        </div>
-                      </div>
                     </div>
-                    
-                    <div className="text-left lg:text-right bg-gradient-to-br from-slate-50 to-slate-100 p-4 rounded-xl">
-                      <p className="text-xs text-slate-500 mb-1">Montant envoyé</p>
-                      <p className="text-2xl font-bold text-slate-800 mb-2">
+                  </div>
+
+                  {/* Amounts */}
+                  <div className="bg-gradient-to-br from-slate-50 to-slate-100 p-3 rounded-lg mb-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <p className="text-xs text-muted-foreground">Envoyé</p>
+                      <p className="text-lg font-bold text-foreground">
                         {new Intl.NumberFormat('fr-FR', {
                           style: 'currency',
                           currency: transfer.from_currency === 'CFA' ? 'XOF' : 'MAD',
                         }).format(transfer.amount)}
                       </p>
-                      <p className="text-xs text-slate-500">Montant reçu</p>
-                      <p className="text-lg font-semibold text-green-600">
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <p className="text-xs text-muted-foreground">Reçu</p>
+                      <p className="text-sm font-semibold text-green-600">
                         {new Intl.NumberFormat('fr-FR', {
                           style: 'currency',
                           currency: transfer.to_currency === 'CFA' ? 'XOF' : 'MAD',
                         }).format(transfer.converted_amount)}
                       </p>
-                      <p className="text-xs text-slate-500 mt-2">
-                        Taux: {transfer.exchange_rate}
+                    </div>
+                  </div>
+
+                  {/* Client and Recipient info */}
+                  <div className="space-y-2 mb-4 text-sm flex-1">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Client</p>
+                      <p className="font-semibold text-foreground truncate">
+                        {transfer.profiles?.first_name && transfer.profiles?.last_name 
+                          ? `${transfer.profiles.first_name} ${transfer.profiles.last_name}`
+                          : 'Non renseigné'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Bénéficiaire</p>
+                      <p className="font-semibold text-foreground truncate">
+                        {transfer.recipients?.name || 'Retrait personnel'}
                       </p>
                     </div>
                   </div>
 
-                  <div className="space-y-4 mb-4">
-                    {/* Informations du client (envoyeur) */}
-                    <div className="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 border-l-4 border-indigo-500 rounded">
-                      <p className="text-xs font-semibold text-indigo-700 mb-3">👤 INFORMATIONS DU CLIENT (ENVOYEUR)</p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                        <div>
-                          <p className="text-xs text-slate-500 mb-1">Nom complet</p>
-                          <p className="font-semibold text-slate-800 text-sm">
-                            {transfer.profiles?.first_name} {transfer.profiles?.last_name}
-                          </p>
+                  {/* View details button */}
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" className="w-full" size="sm">
+                        Voir les détails
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle className="flex items-center gap-3 flex-wrap">
+                          <span>Transfert {transfer.reference_number}</span>
+                          <Badge className={getStatusColor(transfer.status)}>
+                            {getStatusText(transfer.status)}
+                          </Badge>
+                        </DialogTitle>
+                      </DialogHeader>
+                      
+                      <div className="space-y-4 mt-4">
+                        {/* Amounts section */}
+                        <div className="bg-gradient-to-br from-slate-50 to-slate-100 p-4 rounded-xl">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Montant envoyé</p>
+                              <p className="text-2xl font-bold text-foreground">
+                                {new Intl.NumberFormat('fr-FR', {
+                                  style: 'currency',
+                                  currency: transfer.from_currency === 'CFA' ? 'XOF' : 'MAD',
+                                }).format(transfer.amount)}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Montant reçu</p>
+                              <p className="text-2xl font-bold text-green-600">
+                                {new Intl.NumberFormat('fr-FR', {
+                                  style: 'currency',
+                                  currency: transfer.to_currency === 'CFA' ? 'XOF' : 'MAD',
+                                }).format(transfer.converted_amount)}
+                              </p>
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-xs text-slate-500 mb-1">Email</p>
-                          <p className="font-semibold text-indigo-700 text-sm">
-                            {transfer.user_email}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-slate-500 mb-1">Téléphone</p>
-                          <p className="font-semibold text-slate-800 text-sm">
-                            {transfer.profiles?.phone || 'Non renseigné'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-slate-500 mb-1">Pays</p>
-                          <p className="font-semibold text-slate-800 text-sm">
-                            {transfer.profiles?.country || 'Non renseigné'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
 
-                    {/* Informations du bénéficiaire */}
-                    <div className="p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
-                      <p className="text-xs font-semibold text-blue-700 mb-3">📩 INFORMATIONS DU BÉNÉFICIAIRE</p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                        <div>
-                          <p className="text-xs text-slate-500 mb-1">Nom complet</p>
-                          <p className="font-semibold text-slate-800 text-sm">
-                            {transfer.recipients?.name || 'Retrait personnel'}
-                          </p>
+                        {/* Client info */}
+                        <div className="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 border-l-4 border-indigo-500 rounded">
+                          <p className="text-xs font-semibold text-indigo-700 mb-3">👤 INFORMATIONS DU CLIENT (ENVOYEUR)</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Nom complet</p>
+                              <p className="font-semibold text-foreground text-sm">
+                                {transfer.profiles?.first_name && transfer.profiles?.last_name 
+                                  ? `${transfer.profiles.first_name} ${transfer.profiles.last_name}`
+                                  : 'Non renseigné'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Email</p>
+                              <p className="font-semibold text-indigo-700 text-sm break-all">
+                                {transfer.user_email || 'Non renseigné'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Téléphone</p>
+                              <p className="font-semibold text-foreground text-sm">
+                                {transfer.profiles?.phone || 'Non renseigné'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Pays</p>
+                              <p className="font-semibold text-foreground text-sm">
+                                {transfer.profiles?.country || 'Non renseigné'}
+                              </p>
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-xs text-slate-500 mb-1">Téléphone</p>
-                          <p className="font-semibold text-slate-800 text-sm">
-                            {transfer.recipients?.phone || '-'}
-                          </p>
+
+                        {/* Recipient info */}
+                        <div className="p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
+                          <p className="text-xs font-semibold text-blue-700 mb-3">📩 INFORMATIONS DU BÉNÉFICIAIRE</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Nom complet</p>
+                              <p className="font-semibold text-foreground text-sm">
+                                {transfer.recipients?.name || 'Retrait personnel'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Téléphone</p>
+                              <p className="font-semibold text-foreground text-sm">
+                                {transfer.recipients?.phone || '-'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Pays</p>
+                              <p className="font-semibold text-foreground text-sm">
+                                {transfer.recipients?.country || '-'}
+                              </p>
+                            </div>
+                            {transfer.transfer_method === 'bank' && transfer.recipients?.bank_account && (
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-1">Compte bancaire</p>
+                                <p className="font-semibold text-green-700 text-sm">
+                                  {transfer.recipients.bank_account}
+                                </p>
+                              </div>
+                            )}
+                            {transfer.transfer_method === 'wave' && transfer.recipients?.wave_number && (
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-1">Numéro Wave</p>
+                                <p className="font-semibold text-green-700 text-sm">
+                                  {transfer.recipients.wave_number}
+                                </p>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-xs text-slate-500 mb-1">Pays</p>
-                          <p className="font-semibold text-slate-800 text-sm">
-                            {transfer.recipients?.country || '-'}
-                          </p>
+
+                        {/* Transaction details */}
+                        <div className="p-4 bg-slate-50 rounded-xl">
+                          <p className="text-xs font-semibold text-foreground mb-3">💰 DÉTAILS DE LA TRANSACTION</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Méthode</p>
+                              <p className="font-semibold text-foreground text-sm">
+                                {transfer.transfer_method === 'bank' ? 'Virement bancaire' : 'Wave'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Frais</p>
+                              <p className="font-semibold text-foreground text-sm">
+                                {new Intl.NumberFormat('fr-FR', {
+                                  style: 'currency',
+                                  currency: transfer.from_currency === 'CFA' ? 'XOF' : 'MAD',
+                                }).format(transfer.fees)}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Montant total</p>
+                              <p className="font-semibold text-foreground text-sm">
+                                {new Intl.NumberFormat('fr-FR', {
+                                  style: 'currency',
+                                  currency: transfer.from_currency === 'CFA' ? 'XOF' : 'MAD',
+                                }).format(transfer.total_amount)}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Date de création</p>
+                              <p className="font-semibold text-foreground text-sm">
+                                {new Date(transfer.created_at).toLocaleString('fr-FR', {
+                                  day: '2-digit',
+                                  month: 'short',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </p>
+                            </div>
+                            {transfer.completed_at && (
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-1">Date de complétion</p>
+                                <p className="font-semibold text-green-700 text-sm">
+                                  {new Date(transfer.completed_at).toLocaleString('fr-FR', {
+                                    day: '2-digit',
+                                    month: 'short',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </p>
+                              </div>
+                            )}
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Taux de change</p>
+                              <p className="font-semibold text-foreground text-sm">
+                                1 {transfer.from_currency} = {transfer.exchange_rate} {transfer.to_currency}
+                              </p>
+                            </div>
+                          </div>
                         </div>
-                        {transfer.transfer_method === 'bank' && transfer.recipients?.bank_account && (
-                          <div>
-                            <p className="text-xs text-slate-500 mb-1">Compte bancaire</p>
-                            <p className="font-semibold text-green-700 text-sm">
-                              {transfer.recipients.bank_account}
-                            </p>
+
+                        {/* Notes */}
+                        {transfer.notes && (
+                          <div className="p-3 bg-amber-50 rounded-lg border-l-4 border-amber-400">
+                            <p className="text-xs font-semibold text-amber-800 mb-1">📝 Note du client:</p>
+                            <p className="text-sm text-amber-900">{transfer.notes}</p>
                           </div>
                         )}
-                        {transfer.transfer_method === 'wave' && transfer.recipients?.wave_number && (
-                          <div>
-                            <p className="text-xs text-slate-500 mb-1">Numéro Wave</p>
-                            <p className="font-semibold text-green-700 text-sm">
-                              {transfer.recipients.wave_number}
-                            </p>
+
+                        {transfer.admin_notes && (
+                          <div className="p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
+                            <p className="text-xs font-semibold text-blue-800 mb-1">📋 Note admin:</p>
+                            <p className="text-sm text-blue-900">{transfer.admin_notes}</p>
                           </div>
                         )}
-                      </div>
-                    </div>
 
-                    {/* Détails de la transaction */}
-                    <div className="p-4 bg-slate-50 rounded-xl">
-                      <p className="text-xs font-semibold text-slate-700 mb-3">DÉTAILS DE LA TRANSACTION</p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                        <div>
-                          <p className="text-xs text-slate-500 mb-1">Méthode</p>
-                          <p className="font-semibold text-slate-800 text-sm capitalize">
-                            {transfer.transfer_method === 'bank' ? 'Virement bancaire' : 'Wave'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-slate-500 mb-1">Frais</p>
-                          <p className="font-semibold text-slate-800 text-sm">
-                            {new Intl.NumberFormat('fr-FR', {
-                              style: 'currency',
-                              currency: transfer.from_currency === 'CFA' ? 'XOF' : 'MAD',
-                            }).format(transfer.fees)}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-slate-500 mb-1">Montant total</p>
-                          <p className="font-semibold text-slate-800 text-sm">
-                            {new Intl.NumberFormat('fr-FR', {
-                              style: 'currency',
-                              currency: transfer.from_currency === 'CFA' ? 'XOF' : 'MAD',
-                            }).format(transfer.total_amount)}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-slate-500 mb-1">Date de création</p>
-                          <p className="font-semibold text-slate-800 text-sm">
-                            {new Date(transfer.created_at).toLocaleString('fr-FR', {
-                              day: '2-digit',
-                              month: 'short',
-                              year: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </p>
-                        </div>
-                        {transfer.completed_at && (
+                        {/* Proof image */}
+                        {transfer.proof_image_url && (
                           <div>
-                            <p className="text-xs text-slate-500 mb-1">Date de complétion</p>
-                            <p className="font-semibold text-green-700 text-sm">
-                              {new Date(transfer.completed_at).toLocaleString('fr-FR', {
-                                day: '2-digit',
-                                month: 'short',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </p>
-                          </div>
-                        )}
-                        <div>
-                          <p className="text-xs text-slate-500 mb-1">Taux de change</p>
-                          <p className="font-semibold text-slate-800 text-sm">
-                            1 {transfer.from_currency} = {transfer.exchange_rate} {transfer.to_currency}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {transfer.notes && (
-                    <div className="mb-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded">
-                      <p className="text-xs text-slate-500 mb-1">Notes du client</p>
-                      <p className="text-sm font-medium text-slate-800">{transfer.notes}</p>
-                    </div>
-                  )}
-
-                  {transfer.admin_notes && (
-                    <div className="mb-4 p-3 bg-amber-50 border-l-4 border-amber-500 rounded">
-                      <p className="text-xs text-slate-500 mb-1">Notes administrateur</p>
-                      <p className="text-sm font-medium text-slate-800">{transfer.admin_notes}</p>
-                    </div>
-                  )}
-
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    {transfer.proof_image_url && (
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" size="sm" className="flex-1">
-                            <FileImage className="w-4 h-4 mr-2" />
-                            Voir la preuve de paiement
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-2xl">
-                          <DialogHeader>
-                            <DialogTitle>Preuve de paiement</DialogTitle>
-                          </DialogHeader>
-                          <div className="flex justify-center">
+                            <p className="text-xs font-semibold text-foreground mb-2">Justificatif de paiement</p>
                             <img 
                               src={`${supabase.storage.from('transfer-proofs').getPublicUrl(transfer.proof_image_url).data.publicUrl}`}
-                              alt="Preuve de paiement"
-                              className="max-w-full max-h-96 object-contain rounded-lg"
+                              alt="Justificatif" 
+                              className="w-full h-auto rounded-lg border"
                             />
                           </div>
-                        </DialogContent>
-                      </Dialog>
-                    )}
+                        )}
 
-                    <Dialog open={selectedTransfer?.id === transfer.id} onOpenChange={(open) => !open && setSelectedTransfer(null)}>
-                      <DialogTrigger asChild>
-                        <Button 
-                          size="sm"
-                          className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
-                          onClick={() => {
-                            setSelectedTransfer(transfer);
-                            setAdminNotes(transfer.admin_notes || '');
-                          }}
-                        >
-                          <CheckCircle className="w-4 h-4 mr-2" />
-                          Gérer ce transfert
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-md">
-                        <DialogHeader>
-                          <DialogTitle>Gérer le transfert</DialogTitle>
-                        </DialogHeader>
-                        
-                        <div className="space-y-4">
-                          <div>
-                            <label className="text-sm font-medium">Notes administratives:</label>
+                        {/* Actions */}
+                        {transfer.status === 'awaiting_admin' && (
+                          <div className="flex flex-col gap-3 pt-4 border-t">
                             <Textarea
-                              value={adminNotes}
-                              onChange={(e) => setAdminNotes(e.target.value)}
-                              placeholder="Ajouter une note..."
-                              className="mt-2"
+                              placeholder="Ajouter une note administrative..."
+                              value={selectedTransfer?.id === transfer.id ? adminNotes : ''}
+                              onChange={(e) => {
+                                setSelectedTransfer(transfer);
+                                setAdminNotes(e.target.value);
+                              }}
+                              rows={2}
                             />
-                          </div>
-                          
-                          <div className="flex flex-col gap-2">
-                            {transfer.status === 'awaiting_admin' && (
-                              <div className="flex gap-2">
-                                <Button
-                                  onClick={() => updateTransferStatus(transfer.id, 'approved', adminNotes)}
-                                  className="flex-1 bg-green-600 hover:bg-green-700"
-                                >
-                                  <CheckCircle className="w-4 h-4 mr-2" />
-                                  Approuver
-                                </Button>
-                                <Button
-                                  variant="destructive"
-                                  onClick={() => updateTransferStatus(transfer.id, 'rejected', adminNotes)}
-                                  className="flex-1"
-                                >
-                                  <XCircle className="w-4 h-4 mr-2" />
-                                  Rejeter
-                                </Button>
-                              </div>
-                            )}
-                            
-                            {transfer.status === 'approved' && (
+                            <div className="flex gap-2">
                               <Button
-                                onClick={() => updateTransferStatus(transfer.id, 'completed', adminNotes)}
-                                className="w-full bg-green-600 hover:bg-green-700"
+                                onClick={() => updateTransferStatus(transfer.id, 'approved', adminNotes)}
+                                className="flex-1 bg-green-600 hover:bg-green-700"
                               >
-                                <CheckCircle className="w-4 h-4 mr-2" />
-                                Marquer comme terminé
+                                <CheckCircle className="mr-2 h-4 w-4" />
+                                Approuver
                               </Button>
-                            )}
+                              <Button
+                                onClick={() => updateTransferStatus(transfer.id, 'rejected', adminNotes)}
+                                variant="destructive"
+                                className="flex-1"
+                              >
+                                <XCircle className="mr-2 h-4 w-4" />
+                                Rejeter
+                              </Button>
+                            </div>
+                          </div>
+                        )}
 
-                            {transfer.status === 'pending' && (
-                              <div className="flex gap-2">
-                                <Button
-                                  onClick={() => updateTransferStatus(transfer.id, 'approved', adminNotes)}
-                                  className="flex-1 bg-green-600 hover:bg-green-700"
-                                >
-                                  <CheckCircle className="w-4 h-4 mr-2" />
-                                  Approuver
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  onClick={() => updateTransferStatus(transfer.id, 'cancelled', adminNotes)}
-                                  className="flex-1"
-                                >
-                                  <XCircle className="w-4 h-4 mr-2" />
-                                  Annuler
-                                </Button>
-                              </div>
-                            )}
-                            
-                            {(transfer.status === 'approved') && (
-                              <Button
-                                variant="outline"
-                                onClick={() => updateTransferStatus(transfer.id, 'cancelled', adminNotes)}
-                                className="w-full"
-                              >
-                                <XCircle className="w-4 h-4 mr-2" />
-                                Annuler le transfert
-                              </Button>
-                            )}
+                        {transfer.status === 'approved' && (
+                          <div className="flex flex-col gap-3 pt-4 border-t">
+                            <Textarea
+                              placeholder="Ajouter une note pour la complétion..."
+                              value={selectedTransfer?.id === transfer.id ? adminNotes : ''}
+                              onChange={(e) => {
+                                setSelectedTransfer(transfer);
+                                setAdminNotes(e.target.value);
+                              }}
+                              rows={2}
+                            />
+                            <Button
+                              onClick={() => updateTransferStatus(transfer.id, 'completed', adminNotes)}
+                              className="w-full bg-blue-600 hover:bg-blue-700"
+                            >
+                              <CheckCircle className="mr-2 h-4 w-4" />
+                              Marquer comme terminé
+                            </Button>
                           </div>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
+                        )}
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                 </div>
               </Card>
             ))}
-
-            {filteredTransfers.length === 0 && transfers.length > 0 && (
-              <Card className="bg-white/95 backdrop-blur-sm p-12 text-center shadow-medium border-0">
-                <Search className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-slate-700 mb-2">Aucun résultat trouvé</h3>
-                <p className="text-sm text-slate-500">
-                  Essayez de modifier votre recherche ou vos filtres
-                </p>
-              </Card>
-            )}
-
-            {filteredTransfers.length === 0 && transfers.length === 0 && (
-              <Card className="bg-white/95 backdrop-blur-sm p-12 text-center shadow-medium border-0">
-                <XCircle className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-slate-700 mb-2">Aucun transfert trouvé</h3>
-                <p className="text-sm text-slate-500">
-                  {statusFilter !== 'all' 
-                    ? 'Essayez de modifier le filtre de statut'
-                    : 'Aucun transfert en attente de traitement'}
-                </p>
-              </Card>
-            )}
           </div>
         )}
       </div>
