@@ -146,32 +146,44 @@ const Admin = () => {
       console.log('Transfers loaded:', transfersData?.length);
 
       // Get user profiles
-      const userIds = [...new Set(transfersData?.map(t => t.user_id) || [])];
-      console.log('User IDs:', userIds);
+      const userIds = [...new Set(transfersData?.map(t => t.user_id).filter(Boolean) || [])];
+      console.log('User IDs to fetch:', userIds);
       
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('user_id, first_name, last_name, phone, country, email')
-        .in('user_id', userIds);
-
-      console.log('Profiles loaded:', profiles);
-      if (profilesError) {
-        console.error('Error loading profiles:', profilesError);
+      let profiles: any[] = [];
+      if (userIds.length > 0) {
+        const { data, error: profilesError } = await supabase
+          .from('profiles')
+          .select('user_id, first_name, last_name, phone, country, email')
+          .in('user_id', userIds);
+        
+        if (profilesError) {
+          console.error('Error loading profiles:', profilesError);
+        } else {
+          profiles = data || [];
+        }
       }
+
+      console.log('Profiles loaded:', profiles.length, profiles);
 
       // Get recipients
       const recipientIds = [...new Set(transfersData?.map(t => t.recipient_id).filter(Boolean) || [])];
-      console.log('Recipient IDs:', recipientIds);
+      console.log('Recipient IDs to fetch:', recipientIds);
       
-      const { data: recipients, error: recipientsError } = await supabase
-        .from('recipients')
-        .select('id, name, phone, country, bank_account, wave_number')
-        .in('id', recipientIds);
+      let recipients: any[] = [];
+      if (recipientIds.length > 0) {
+        const { data, error: recipientsError } = await supabase
+          .from('recipients')
+          .select('id, name, phone, country, bank_account, wave_number')
+          .in('id', recipientIds);
 
-      console.log('Recipients loaded:', recipients);
-      if (recipientsError) {
-        console.error('Error loading recipients:', recipientsError);
+        if (recipientsError) {
+          console.error('Error loading recipients:', recipientsError);
+        } else {
+          recipients = data || [];
+        }
       }
+      
+      console.log('Recipients loaded:', recipients.length, recipients);
 
       // Merge data
       const enhancedTransfers = transfersData?.map(transfer => {
