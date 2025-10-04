@@ -139,44 +139,70 @@ const Admin = () => {
         query = query.eq('status', statusFilter);
       }
 
-      const { data, error } = await query;
+      const { data: transfersData, error } = await query;
 
       if (error) throw error;
 
-      // Get user profiles separately
-      const userIds = [...new Set(data?.map(t => t.user_id) || [])];
+      console.log('Transfers loaded:', transfersData?.length);
+
+      // Get user profiles
+      const userIds = [...new Set(transfersData?.map(t => t.user_id) || [])];
+      console.log('User IDs:', userIds);
+      
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('user_id, first_name, last_name, phone, country, email')
         .in('user_id', userIds);
 
+      console.log('Profiles loaded:', profiles);
       if (profilesError) {
         console.error('Error loading profiles:', profilesError);
       }
 
       // Get recipients
-      const recipientIds = [...new Set(data?.map(t => t.recipient_id).filter(Boolean) || [])];
+      const recipientIds = [...new Set(transfersData?.map(t => t.recipient_id).filter(Boolean) || [])];
+      console.log('Recipient IDs:', recipientIds);
+      
       const { data: recipients, error: recipientsError } = await supabase
         .from('recipients')
         .select('id, name, phone, country, bank_account, wave_number')
         .in('id', recipientIds);
 
+      console.log('Recipients loaded:', recipients);
       if (recipientsError) {
         console.error('Error loading recipients:', recipientsError);
       }
 
       // Merge data
-      const enhancedTransfers = data?.map(transfer => {
+      const enhancedTransfers = transfersData?.map(transfer => {
         const userProfile = profiles?.find(p => p.user_id === transfer.user_id);
+        const recipient = recipients?.find(r => r.id === transfer.recipient_id);
+        
+        console.log(`Transfer ${transfer.reference_number}:`, {
+          userProfile,
+          recipient
+        });
         
         return {
           ...transfer,
-          profiles: userProfile || null,
-          recipients: recipients?.find(r => r.id === transfer.recipient_id) || null,
+          profiles: userProfile ? {
+            first_name: userProfile.first_name,
+            last_name: userProfile.last_name,
+            phone: userProfile.phone,
+            country: userProfile.country,
+          } : null,
+          recipients: recipient ? {
+            name: recipient.name,
+            phone: recipient.phone,
+            country: recipient.country,
+            bank_account: recipient.bank_account,
+            wave_number: recipient.wave_number,
+          } : undefined,
           user_email: userProfile?.email || 'N/A'
         };
       }) || [];
 
+      console.log('Enhanced transfers:', enhancedTransfers);
       setTransfers(enhancedTransfers);
       calculateStats(enhancedTransfers);
     } catch (error) {
@@ -470,13 +496,46 @@ const Admin = () => {
                     </div>
                   </div>
 
-                  {/* View details button */}
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" className="w-full" size="sm">
-                        Voir les détails
+                  {/* Action buttons */}
+                  <div className="flex flex-col gap-2">
+                    {transfer.status === 'awaiting_admin' && (
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => updateTransferStatus(transfer.id, 'approved')}
+                          className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          <CheckCircle className="h-4 w-4 mr-1" />
+                          Approuver
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => updateTransferStatus(transfer.id, 'rejected')}
+                          className="flex-1"
+                        >
+                          <XCircle className="h-4 w-4 mr-1" />
+                          Rejeter
+                        </Button>
+                      </div>
+                    )}
+                    {transfer.status === 'approved' && (
+                      <Button
+                        size="sm"
+                        onClick={() => updateTransferStatus(transfer.id, 'completed')}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                      >
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        Terminé
                       </Button>
-                    </DialogTrigger>
+                    )}
+                    
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" className="w-full" size="sm">
+                          Voir les détails
+                        </Button>
+                      </DialogTrigger>
                     <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                       <DialogHeader>
                         <DialogTitle className="flex items-center gap-3 flex-wrap">
@@ -730,7 +789,8 @@ const Admin = () => {
                         )}
                       </div>
                     </DialogContent>
-                  </Dialog>
+                    </Dialog>
+                  </div>
                 </div>
               </Card>
             ))}
