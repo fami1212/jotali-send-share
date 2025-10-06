@@ -1,17 +1,20 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, XCircle, FileImage, Search, TrendingUp, Clock, DollarSign, Users } from 'lucide-react';
+import { CheckCircle, XCircle, FileImage } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import Navbar from '@/components/Navbar';
+import AdminStats from '@/components/admin/AdminStats';
+import AdminFilters from '@/components/admin/AdminFilters';
+import ExchangeRateManager from '@/components/admin/ExchangeRateManager';
 
 interface Transfer {
   id: string;
@@ -53,8 +56,19 @@ interface Stats {
   total: number;
   pending: number;
   awaiting_admin: number;
+  approved: number;
   completed: number;
-  totalAmount: number;
+  rejected: number;
+  cancelled: number;
+  totalAmount: {
+    MAD: number;
+    CFA: number;
+  };
+  avgProcessingTime: number;
+  urgentTransfers: number;
+  todayTransfers: number;
+  weekTransfers: number;
+  monthTransfers: number;
 }
 
 const Admin = () => {
@@ -68,14 +82,26 @@ const Admin = () => {
   const [selectedTransfer, setSelectedTransfer] = useState<Transfer | null>(null);
   const [adminNotes, setAdminNotes] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [currencyFilter, setCurrencyFilter] = useState('all');
+  const [methodFilter, setMethodFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [selectedTransfers, setSelectedTransfers] = useState<Set<string>>(new Set());
   const [stats, setStats] = useState<Stats>({
     total: 0,
     pending: 0,
     awaiting_admin: 0,
+    approved: 0,
     completed: 0,
-    totalAmount: 0,
+    rejected: 0,
+    cancelled: 0,
+    totalAmount: { MAD: 0, CFA: 0 },
+    avgProcessingTime: 0,
+    urgentTransfers: 0,
+    todayTransfers: 0,
+    weekTransfers: 0,
+    monthTransfers: 0,
   });
 
   useEffect(() => {
@@ -90,7 +116,7 @@ const Admin = () => {
 
   useEffect(() => {
     filterTransfers();
-  }, [transfers, searchQuery]);
+  }, [transfers, searchQuery, currencyFilter, methodFilter, dateFilter]);
 
   const checkAdminStatus = async () => {
     if (!user?.id) {
@@ -99,7 +125,6 @@ const Admin = () => {
     }
 
     try {
-      // Call the is_admin function using RPC
       const { data, error } = await supabase.rpc('is_admin', { 
         user_id_input: user.id 
       });
@@ -143,11 +168,7 @@ const Admin = () => {
 
       if (error) throw error;
 
-      console.log('Transfers loaded:', transfersData?.length);
-
-      // Get user profiles
       const userIds = [...new Set(transfersData?.map(t => t.user_id).filter(Boolean) || [])];
-      console.log('User IDs to fetch:', userIds);
       
       let profiles: any[] = [];
       if (userIds.length > 0) {
@@ -156,18 +177,12 @@ const Admin = () => {
           .select('user_id, first_name, last_name, phone, country, email')
           .in('user_id', userIds);
         
-        if (profilesError) {
-          console.error('Error loading profiles:', profilesError);
-        } else {
+        if (!profilesError) {
           profiles = data || [];
         }
       }
 
-      console.log('Profiles loaded:', profiles.length, profiles);
-
-      // Get recipients
       const recipientIds = [...new Set(transfersData?.map(t => t.recipient_id).filter(Boolean) || [])];
-      console.log('Recipient IDs to fetch:', recipientIds);
       
       let recipients: any[] = [];
       if (recipientIds.length > 0) {
@@ -176,24 +191,14 @@ const Admin = () => {
           .select('id, name, phone, country, bank_account, wave_number')
           .in('id', recipientIds);
 
-        if (recipientsError) {
-          console.error('Error loading recipients:', recipientsError);
-        } else {
+        if (!recipientsError) {
           recipients = data || [];
         }
       }
-      
-      console.log('Recipients loaded:', recipients.length, recipients);
 
-      // Merge data
       const enhancedTransfers = transfersData?.map(transfer => {
         const userProfile = profiles?.find(p => p.user_id === transfer.user_id);
         const recipient = recipients?.find(r => r.id === transfer.recipient_id);
-        
-        console.log(`Transfer ${transfer.reference_number}:`, {
-          userProfile,
-          recipient
-        });
         
         return {
           ...transfer,
@@ -214,7 +219,6 @@ const Admin = () => {
         };
       }) || [];
 
-      console.log('Enhanced transfers:', enhancedTransfers);
       setTransfers(enhancedTransfers);
       calculateStats(enhancedTransfers);
     } catch (error) {
@@ -229,31 +233,101 @@ const Admin = () => {
     }
   };
 
-  const calculateStats = (transfers: Transfer[]) => {
+  const calculateStats = (transfersList: Transfer[]) => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const monthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+
+    const urgentTransfers = transfersList.filter(t => {
+      if (t.status !== 'awaiting_admin' && t.status !== 'pending') return false;
+      const createdAt = new Date(t.created_at);
+      const hoursDiff = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+      return hoursDiff > 24;
+    }).length;
+
+    const completedWithTime = transfersList.filter(t => t.completed_at);
+    const avgProcessingTime = completedWithTime.length > 0
+      ? completedWithTime.reduce((sum, t) => {
+          const start = new Date(t.created_at).getTime();
+          const end = new Date(t.completed_at!).getTime();
+          return sum + (end - start) / (1000 * 60 * 60);
+        }, 0) / completedWithTime.length
+      : 0;
+
+    const totalAmountMAD = transfersList
+      .filter(t => t.from_currency === 'MAD')
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+    
+    const totalAmountCFA = transfersList
+      .filter(t => t.from_currency === 'CFA')
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+
     const stats = {
-      total: transfers.length,
-      pending: transfers.filter(t => t.status === 'pending').length,
-      awaiting_admin: transfers.filter(t => t.status === 'awaiting_admin').length,
-      completed: transfers.filter(t => t.status === 'completed').length,
-      totalAmount: transfers.reduce((sum, t) => sum + Number(t.amount), 0),
+      total: transfersList.length,
+      pending: transfersList.filter(t => t.status === 'pending').length,
+      awaiting_admin: transfersList.filter(t => t.status === 'awaiting_admin').length,
+      approved: transfersList.filter(t => t.status === 'approved').length,
+      completed: transfersList.filter(t => t.status === 'completed').length,
+      rejected: transfersList.filter(t => t.status === 'rejected').length,
+      cancelled: transfersList.filter(t => t.status === 'cancelled').length,
+      totalAmount: { MAD: totalAmountMAD, CFA: totalAmountCFA },
+      avgProcessingTime,
+      urgentTransfers,
+      todayTransfers: transfersList.filter(t => new Date(t.created_at) >= today).length,
+      weekTransfers: transfersList.filter(t => new Date(t.created_at) >= weekAgo).length,
+      monthTransfers: transfersList.filter(t => new Date(t.created_at) >= monthAgo).length,
     };
     setStats(stats);
   };
 
   const filterTransfers = () => {
-    if (!searchQuery.trim()) {
-      setFilteredTransfers(transfers);
-      return;
+    let filtered = [...transfers];
+
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(t => t.status === statusFilter);
     }
 
-    const query = searchQuery.toLowerCase();
-    const filtered = transfers.filter(transfer => 
-      transfer.reference_number.toLowerCase().includes(query) ||
-      transfer.user_email?.toLowerCase().includes(query) ||
-      `${transfer.profiles?.first_name} ${transfer.profiles?.last_name}`.toLowerCase().includes(query) ||
-      transfer.recipients?.name?.toLowerCase().includes(query) ||
-      transfer.recipients?.phone?.includes(query)
-    );
+    if (currencyFilter !== 'all') {
+      filtered = filtered.filter(t => t.from_currency === currencyFilter);
+    }
+
+    if (methodFilter !== 'all') {
+      filtered = filtered.filter(t => t.transfer_method === methodFilter);
+    }
+
+    if (dateFilter !== 'all') {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const monthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+
+      if (dateFilter === 'today') {
+        filtered = filtered.filter(t => new Date(t.created_at) >= today);
+      } else if (dateFilter === 'week') {
+        filtered = filtered.filter(t => new Date(t.created_at) >= weekAgo);
+      } else if (dateFilter === 'month') {
+        filtered = filtered.filter(t => new Date(t.created_at) >= monthAgo);
+      } else if (dateFilter === 'urgent') {
+        filtered = filtered.filter(t => {
+          const createdAt = new Date(t.created_at);
+          const hoursDiff = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+          return hoursDiff > 24 && (t.status === 'awaiting_admin' || t.status === 'pending');
+        });
+      }
+    }
+
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(transfer =>
+        transfer.reference_number.toLowerCase().includes(query) ||
+        transfer.user_email?.toLowerCase().includes(query) ||
+        `${transfer.profiles?.first_name} ${transfer.profiles?.last_name}`.toLowerCase().includes(query) ||
+        transfer.recipients?.name?.toLowerCase().includes(query) ||
+        transfer.recipients?.phone?.includes(query)
+      );
+    }
+
     setFilteredTransfers(filtered);
   };
 
@@ -269,9 +343,7 @@ const Admin = () => {
         .update(updateData)
         .eq('id', transferId);
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       toast({
         title: "Statut mis à jour",
@@ -291,12 +363,85 @@ const Admin = () => {
     }
   };
 
+  const getActiveFiltersCount = () => {
+    let count = 0;
+    if (statusFilter !== 'all') count++;
+    if (currencyFilter !== 'all') count++;
+    if (methodFilter !== 'all') count++;
+    if (dateFilter !== 'all') count++;
+    if (searchQuery.trim()) count++;
+    return count;
+  };
+
+  const handleExport = () => {
+    const csv = [
+      ['Référence', 'Date', 'Statut', 'Client', 'Montant envoyé', 'Montant reçu', 'Méthode'].join(','),
+      ...filteredTransfers.map(t => [
+        t.reference_number,
+        new Date(t.created_at).toLocaleDateString('fr-FR'),
+        getStatusText(t.status),
+        t.user_email,
+        `${t.amount} ${t.from_currency}`,
+        `${t.converted_amount} ${t.to_currency}`,
+        t.transfer_method === 'bank' ? 'Virement' : 'Wave'
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `transferts_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+
+    toast({
+      title: "Export réussi",
+      description: `${filteredTransfers.length} transferts exportés`,
+    });
+  };
+
+  const handleBulkApprove = async () => {
+    if (selectedTransfers.size === 0) return;
+
+    try {
+      const promises = Array.from(selectedTransfers).map(id =>
+        updateTransferStatus(id, 'approved')
+      );
+      
+      await Promise.all(promises);
+      
+      toast({
+        title: "Succès",
+        description: `${selectedTransfers.size} transfert(s) approuvé(s)`,
+      });
+      
+      setSelectedTransfers(new Set());
+      loadTransfers();
+    } catch (error) {
+      console.error('Error bulk approving:', error);
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de l'approbation groupée",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const toggleTransferSelection = (transferId: string) => {
+    const newSelection = new Set(selectedTransfers);
+    if (newSelection.has(transferId)) {
+      newSelection.delete(transferId);
+    } else {
+      newSelection.add(transferId);
+    }
+    setSelectedTransfers(newSelection);
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-yellow-500/10 text-yellow-500';
-      case 'awaiting_admin': return 'bg-blue-500/10 text-blue-500';
-      case 'approved': return 'bg-green-500/10 text-green-500';
-      case 'completed': return 'bg-green-600/10 text-green-600';
+      case 'awaiting_admin': return 'bg-orange-500/10 text-orange-500';
+      case 'approved': return 'bg-blue-500/10 text-blue-500';
+      case 'completed': return 'bg-green-500/10 text-green-500';
       case 'rejected': return 'bg-red-500/10 text-red-500';
       case 'cancelled': return 'bg-gray-500/10 text-gray-500';
       default: return 'bg-gray-500/10 text-gray-500';
@@ -313,6 +458,14 @@ const Admin = () => {
       case 'cancelled': return 'Annulé';
       default: return status;
     }
+  };
+
+  const isUrgent = (transfer: Transfer) => {
+    if (transfer.status !== 'awaiting_admin' && transfer.status !== 'pending') return false;
+    const createdAt = new Date(transfer.created_at);
+    const now = new Date();
+    const hoursDiff = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+    return hoursDiff > 24;
   };
 
   if (!isAdmin) {
@@ -333,481 +486,297 @@ const Admin = () => {
           </p>
         </div>
 
-        {/* Statistiques */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-          <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-4 shadow-strong">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs opacity-90 mb-1">Total</p>
-                <p className="text-2xl font-bold">{stats.total}</p>
-              </div>
-              <Users className="w-8 h-8 opacity-80" />
-            </div>
-          </Card>
-          
-          <Card className="bg-gradient-to-br from-amber-500 to-orange-600 text-white p-4 shadow-strong">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs opacity-90 mb-1">En attente admin</p>
-                <p className="text-2xl font-bold">{stats.awaiting_admin}</p>
-              </div>
-              <Clock className="w-8 h-8 opacity-80" />
-            </div>
-          </Card>
+        <Tabs defaultValue="transfers" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsTrigger value="transfers">Transferts</TabsTrigger>
+            <TabsTrigger value="rates">Taux de change</TabsTrigger>
+          </TabsList>
 
-          <Card className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-white p-4 shadow-strong">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs opacity-90 mb-1">En attente</p>
-                <p className="text-2xl font-bold">{stats.pending}</p>
-              </div>
-              <Clock className="w-8 h-8 opacity-80" />
-            </div>
-          </Card>
+          <TabsContent value="transfers" className="space-y-6">
+            <AdminStats stats={stats} />
 
-          <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white p-4 shadow-strong">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs opacity-90 mb-1">Terminés</p>
-                <p className="text-2xl font-bold">{stats.completed}</p>
-              </div>
-              <CheckCircle className="w-8 h-8 opacity-80" />
-            </div>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-4 shadow-strong">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs opacity-90 mb-1">Montant total</p>
-                <p className="text-lg font-bold">
-                  {new Intl.NumberFormat('fr-FR', {
-                    notation: 'compact',
-                    maximumFractionDigits: 1
-                  }).format(stats.totalAmount)}
-                </p>
-              </div>
-              <DollarSign className="w-8 h-8 opacity-80" />
-            </div>
-          </Card>
-        </div>
-
-        {/* Filtres et recherche */}
-        <div className="mb-6 flex flex-col sm:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input
-              placeholder="Rechercher par référence, email, nom, téléphone..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
+            <AdminFilters
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              statusFilter={statusFilter}
+              setStatusFilter={setStatusFilter}
+              currencyFilter={currencyFilter}
+              setCurrencyFilter={setCurrencyFilter}
+              methodFilter={methodFilter}
+              setMethodFilter={setMethodFilter}
+              dateFilter={dateFilter}
+              setDateFilter={setDateFilter}
+              onRefresh={loadTransfers}
+              onExport={handleExport}
+              activeFiltersCount={getActiveFiltersCount()}
             />
-          </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-64">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous les transferts</SelectItem>
-              <SelectItem value="awaiting_admin">En attente admin</SelectItem>
-              <SelectItem value="pending">En attente</SelectItem>
-              <SelectItem value="approved">Approuvés</SelectItem>
-              <SelectItem value="completed">Terminés</SelectItem>
-              <SelectItem value="rejected">Rejetés</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
 
-        {isLoading ? (
-          <div className="text-center py-8">Chargement...</div>
-        ) : filteredTransfers.length === 0 ? (
-          <div className="text-center py-12">
-            <Card className="bg-white/95 backdrop-blur-sm p-12 text-center shadow-medium border-0">
-              {transfers.length === 0 ? (
-                <>
-                  <XCircle className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-foreground mb-2">Aucun transfert trouvé</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {statusFilter !== 'all' 
-                      ? 'Essayez de modifier le filtre de statut'
-                      : 'Aucun transfert en attente de traitement'}
-                  </p>
-                </>
-              ) : (
-                <>
-                  <Search className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-foreground mb-2">Aucun résultat trouvé</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Essayez de modifier votre recherche ou vos filtres
-                  </p>
-                </>
-              )}
-            </Card>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredTransfers.map((transfer) => (
-              <Card key={transfer.id} className="bg-white/95 backdrop-blur-sm shadow-medium border-0 hover:shadow-strong transition-all hover:scale-[1.02] flex flex-col">
-                <div className="p-5 flex flex-col flex-1">
-                  {/* Header with status and type */}
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <p className="text-xs text-muted-foreground mb-1">Référence</p>
-                      <h3 className="text-sm font-bold text-foreground mb-2 truncate">
-                        {transfer.reference_number}
-                      </h3>
-                      <div className="flex gap-2 flex-wrap">
-                        <Badge className={getStatusColor(transfer.status)}>
-                          {getStatusText(transfer.status)}
-                        </Badge>
-                        <Badge variant="outline" className="text-xs">
-                          {transfer.transfer_type === 'transfer' ? 'Envoi' : 
-                           transfer.transfer_type === 'withdrawal' ? 'Retrait' :
-                           transfer.transfer_type === 'exchange' ? 'Échange' : 'Transfert'}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Amounts */}
-                  <div className="bg-gradient-to-br from-slate-50 to-slate-100 p-3 rounded-lg mb-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <p className="text-xs text-muted-foreground">Envoyé</p>
-                      <p className="text-lg font-bold text-foreground">
-                        {new Intl.NumberFormat('fr-FR', {
-                          style: 'currency',
-                          currency: transfer.from_currency === 'CFA' ? 'XOF' : 'MAD',
-                        }).format(transfer.amount)}
-                      </p>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <p className="text-xs text-muted-foreground">Reçu</p>
-                      <p className="text-sm font-semibold text-green-600">
-                        {new Intl.NumberFormat('fr-FR', {
-                          style: 'currency',
-                          currency: transfer.to_currency === 'CFA' ? 'XOF' : 'MAD',
-                        }).format(transfer.converted_amount)}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Client and Recipient info */}
-                  <div className="space-y-2 mb-4 text-sm flex-1">
-                    <div>
-                      <p className="text-xs text-muted-foreground">Client</p>
-                      <p className="font-semibold text-foreground truncate">
-                        {transfer.profiles?.first_name && transfer.profiles?.last_name 
-                          ? `${transfer.profiles.first_name} ${transfer.profiles.last_name}`
-                          : 'Non renseigné'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Bénéficiaire</p>
-                      <p className="font-semibold text-foreground truncate">
-                        {transfer.recipients?.name || 'Retrait personnel'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Action buttons */}
-                  <div className="flex flex-col gap-2">
-                    {transfer.status === 'awaiting_admin' && (
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          onClick={() => updateTransferStatus(transfer.id, 'approved')}
-                          className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                        >
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          Approuver
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => updateTransferStatus(transfer.id, 'rejected')}
-                          className="flex-1"
-                        >
-                          <XCircle className="h-4 w-4 mr-1" />
-                          Rejeter
-                        </Button>
-                      </div>
-                    )}
-                    {transfer.status === 'approved' && (
-                      <Button
-                        size="sm"
-                        onClick={() => updateTransferStatus(transfer.id, 'completed')}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                      >
-                        <CheckCircle className="h-4 w-4 mr-1" />
-                        Terminé
-                      </Button>
-                    )}
-                    
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button variant="outline" className="w-full" size="sm">
-                          Voir les détails
-                        </Button>
-                      </DialogTrigger>
-                    <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                      <DialogHeader>
-                        <DialogTitle className="flex items-center gap-3 flex-wrap">
-                          <span>Transfert {transfer.reference_number}</span>
-                          <Badge className={getStatusColor(transfer.status)}>
-                            {getStatusText(transfer.status)}
-                          </Badge>
-                        </DialogTitle>
-                      </DialogHeader>
-                      
-                      <div className="space-y-4 mt-4">
-                        {/* Amounts section */}
-                        <div className="bg-gradient-to-br from-slate-50 to-slate-100 p-4 rounded-xl">
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <p className="text-xs text-muted-foreground mb-1">Montant envoyé</p>
-                              <p className="text-2xl font-bold text-foreground">
-                                {new Intl.NumberFormat('fr-FR', {
-                                  style: 'currency',
-                                  currency: transfer.from_currency === 'CFA' ? 'XOF' : 'MAD',
-                                }).format(transfer.amount)}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-muted-foreground mb-1">Montant reçu</p>
-                              <p className="text-2xl font-bold text-green-600">
-                                {new Intl.NumberFormat('fr-FR', {
-                                  style: 'currency',
-                                  currency: transfer.to_currency === 'CFA' ? 'XOF' : 'MAD',
-                                }).format(transfer.converted_amount)}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Client info */}
-                        <div className="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 border-l-4 border-indigo-500 rounded">
-                          <p className="text-xs font-semibold text-indigo-700 mb-3">👤 INFORMATIONS DU CLIENT (ENVOYEUR)</p>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                              <p className="text-xs text-muted-foreground mb-1">Nom complet</p>
-                              <p className="font-semibold text-foreground text-sm">
-                                {transfer.profiles?.first_name && transfer.profiles?.last_name 
-                                  ? `${transfer.profiles.first_name} ${transfer.profiles.last_name}`
-                                  : 'Non renseigné'}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-muted-foreground mb-1">Email</p>
-                              <p className="font-semibold text-indigo-700 text-sm break-all">
-                                {transfer.user_email || 'Non renseigné'}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-muted-foreground mb-1">Téléphone</p>
-                              <p className="font-semibold text-foreground text-sm">
-                                {transfer.profiles?.phone || 'Non renseigné'}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-muted-foreground mb-1">Pays</p>
-                              <p className="font-semibold text-foreground text-sm">
-                                {transfer.profiles?.country || 'Non renseigné'}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Recipient info */}
-                        <div className="p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
-                          <p className="text-xs font-semibold text-blue-700 mb-3">📩 INFORMATIONS DU BÉNÉFICIAIRE</p>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                              <p className="text-xs text-muted-foreground mb-1">Nom complet</p>
-                              <p className="font-semibold text-foreground text-sm">
-                                {transfer.recipients?.name || 'Retrait personnel'}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-muted-foreground mb-1">Téléphone</p>
-                              <p className="font-semibold text-foreground text-sm">
-                                {transfer.recipients?.phone || '-'}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-muted-foreground mb-1">Pays</p>
-                              <p className="font-semibold text-foreground text-sm">
-                                {transfer.recipients?.country || '-'}
-                              </p>
-                            </div>
-                            {transfer.transfer_method === 'bank' && transfer.recipients?.bank_account && (
-                              <div>
-                                <p className="text-xs text-muted-foreground mb-1">Compte bancaire</p>
-                                <p className="font-semibold text-green-700 text-sm">
-                                  {transfer.recipients.bank_account}
-                                </p>
-                              </div>
-                            )}
-                            {transfer.transfer_method === 'wave' && transfer.recipients?.wave_number && (
-                              <div>
-                                <p className="text-xs text-muted-foreground mb-1">Numéro Wave</p>
-                                <p className="font-semibold text-green-700 text-sm">
-                                  {transfer.recipients.wave_number}
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Transaction details */}
-                        <div className="p-4 bg-slate-50 rounded-xl">
-                          <p className="text-xs font-semibold text-foreground mb-3">💰 DÉTAILS DE LA TRANSACTION</p>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                            <div>
-                              <p className="text-xs text-muted-foreground mb-1">Méthode</p>
-                              <p className="font-semibold text-foreground text-sm">
-                                {transfer.transfer_method === 'bank' ? 'Virement bancaire' : 'Wave'}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-muted-foreground mb-1">Frais</p>
-                              <p className="font-semibold text-foreground text-sm">
-                                {new Intl.NumberFormat('fr-FR', {
-                                  style: 'currency',
-                                  currency: transfer.from_currency === 'CFA' ? 'XOF' : 'MAD',
-                                }).format(transfer.fees)}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-muted-foreground mb-1">Montant total</p>
-                              <p className="font-semibold text-foreground text-sm">
-                                {new Intl.NumberFormat('fr-FR', {
-                                  style: 'currency',
-                                  currency: transfer.from_currency === 'CFA' ? 'XOF' : 'MAD',
-                                }).format(transfer.total_amount)}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-muted-foreground mb-1">Date de création</p>
-                              <p className="font-semibold text-foreground text-sm">
-                                {new Date(transfer.created_at).toLocaleString('fr-FR', {
-                                  day: '2-digit',
-                                  month: 'short',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </p>
-                            </div>
-                            {transfer.completed_at && (
-                              <div>
-                                <p className="text-xs text-muted-foreground mb-1">Date de complétion</p>
-                                <p className="font-semibold text-green-700 text-sm">
-                                  {new Date(transfer.completed_at).toLocaleString('fr-FR', {
-                                    day: '2-digit',
-                                    month: 'short',
-                                    year: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                  })}
-                                </p>
-                              </div>
-                            )}
-                            <div>
-                              <p className="text-xs text-muted-foreground mb-1">Taux de change</p>
-                              <p className="font-semibold text-foreground text-sm">
-                                1 {transfer.from_currency} = {transfer.exchange_rate} {transfer.to_currency}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Notes */}
-                        {transfer.notes && (
-                          <div className="p-3 bg-amber-50 rounded-lg border-l-4 border-amber-400">
-                            <p className="text-xs font-semibold text-amber-800 mb-1">📝 Note du client:</p>
-                            <p className="text-sm text-amber-900">{transfer.notes}</p>
-                          </div>
-                        )}
-
-                        {transfer.admin_notes && (
-                          <div className="p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
-                            <p className="text-xs font-semibold text-blue-800 mb-1">📋 Note admin:</p>
-                            <p className="text-sm text-blue-900">{transfer.admin_notes}</p>
-                          </div>
-                        )}
-
-                        {/* Proof image */}
-                        {transfer.proof_image_url && (
-                          <div>
-                            <p className="text-xs font-semibold text-foreground mb-2">Justificatif de paiement</p>
-                            <img 
-                              src={`${supabase.storage.from('transfer-proofs').getPublicUrl(transfer.proof_image_url).data.publicUrl}`}
-                              alt="Justificatif" 
-                              className="w-full h-auto rounded-lg border"
-                            />
-                          </div>
-                        )}
-
-                        {/* Actions */}
-                        {transfer.status === 'awaiting_admin' && (
-                          <div className="flex flex-col gap-3 pt-4 border-t">
-                            <Textarea
-                              placeholder="Ajouter une note administrative..."
-                              value={selectedTransfer?.id === transfer.id ? adminNotes : ''}
-                              onChange={(e) => {
-                                setSelectedTransfer(transfer);
-                                setAdminNotes(e.target.value);
-                              }}
-                              rows={2}
-                            />
-                            <div className="flex gap-2">
-                              <Button
-                                onClick={() => updateTransferStatus(transfer.id, 'approved', adminNotes)}
-                                className="flex-1 bg-green-600 hover:bg-green-700"
-                              >
-                                <CheckCircle className="mr-2 h-4 w-4" />
-                                Approuver
-                              </Button>
-                              <Button
-                                onClick={() => updateTransferStatus(transfer.id, 'rejected', adminNotes)}
-                                variant="destructive"
-                                className="flex-1"
-                              >
-                                <XCircle className="mr-2 h-4 w-4" />
-                                Rejeter
-                              </Button>
-                            </div>
-                          </div>
-                        )}
-
-                        {transfer.status === 'approved' && (
-                          <div className="flex flex-col gap-3 pt-4 border-t">
-                            <Textarea
-                              placeholder="Ajouter une note pour la complétion..."
-                              value={selectedTransfer?.id === transfer.id ? adminNotes : ''}
-                              onChange={(e) => {
-                                setSelectedTransfer(transfer);
-                                setAdminNotes(e.target.value);
-                              }}
-                              rows={2}
-                            />
-                            <Button
-                              onClick={() => updateTransferStatus(transfer.id, 'completed', adminNotes)}
-                              className="w-full bg-blue-600 hover:bg-blue-700"
-                            >
-                              <CheckCircle className="mr-2 h-4 w-4" />
-                              Marquer comme terminé
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    </DialogContent>
-                    </Dialog>
+            {selectedTransfers.size > 0 && (
+              <Card className="p-4 bg-primary/5 border-primary">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-foreground">
+                    {selectedTransfers.size} transfert(s) sélectionné(s)
+                  </span>
+                  <div className="flex gap-2">
+                    <Button variant="default" size="sm" onClick={handleBulkApprove}>
+                      Approuver la sélection
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setSelectedTransfers(new Set())}>
+                      Désélectionner tout
+                    </Button>
                   </div>
                 </div>
               </Card>
-            ))}
-          </div>
-        )}
+            )}
+
+            {isLoading ? (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">Chargement...</p>
+              </div>
+            ) : filteredTransfers.length === 0 ? (
+              <Card className="p-12 text-center">
+                <p className="text-muted-foreground">Aucun transfert trouvé</p>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredTransfers.map((transfer) => (
+                  <Card key={transfer.id} className={`p-4 hover:shadow-lg transition-shadow relative ${isUrgent(transfer) ? 'border-red-500 border-2' : ''}`}>
+                    <div className="absolute top-2 left-2">
+                      <Checkbox
+                        checked={selectedTransfers.has(transfer.id)}
+                        onCheckedChange={() => toggleTransferSelection(transfer.id)}
+                      />
+                    </div>
+                    
+                    {isUrgent(transfer) && (
+                      <div className="absolute top-2 right-2">
+                        <Badge className="bg-red-500 text-white">Urgent</Badge>
+                      </div>
+                    )}
+
+                    <div className="mt-6 space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Référence</p>
+                          <p className="font-semibold text-foreground">{transfer.reference_number}</p>
+                        </div>
+                        <Badge className={getStatusColor(transfer.status)}>
+                          {getStatusText(transfer.status)}
+                        </Badge>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Envoyé</p>
+                          <p className="font-semibold text-foreground">
+                            {transfer.amount.toLocaleString()} {transfer.from_currency}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Reçu</p>
+                          <p className="font-semibold text-green-600">
+                            {transfer.converted_amount.toLocaleString()} {transfer.to_currency}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="text-xs text-muted-foreground">Client</p>
+                        <p className="text-sm font-medium text-foreground truncate">
+                          {transfer.profiles?.first_name && transfer.profiles?.last_name
+                            ? `${transfer.profiles.first_name} ${transfer.profiles.last_name}`
+                            : transfer.user_email}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-xs text-muted-foreground">Bénéficiaire</p>
+                        <p className="text-sm font-medium text-foreground truncate">
+                          {transfer.recipients?.name || 'Retrait personnel'}
+                        </p>
+                      </div>
+
+                      <div className="pt-3 border-t flex gap-2">
+                        {transfer.status === 'awaiting_admin' && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="default"
+                              className="flex-1"
+                              onClick={() => updateTransferStatus(transfer.id, 'approved')}
+                            >
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                              Approuver
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              className="flex-1"
+                              onClick={() => updateTransferStatus(transfer.id, 'rejected')}
+                            >
+                              <XCircle className="h-4 w-4 mr-1" />
+                              Rejeter
+                            </Button>
+                          </>
+                        )}
+                        {transfer.status === 'approved' && (
+                          <Button
+                            size="sm"
+                            variant="default"
+                            className="w-full"
+                            onClick={() => updateTransferStatus(transfer.id, 'completed')}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Marquer terminé
+                          </Button>
+                        )}
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button size="sm" variant="outline" className="flex-1" onClick={() => setSelectedTransfer(transfer)}>
+                              Détails
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                            <DialogHeader>
+                              <DialogTitle className="flex items-center gap-3">
+                                <span>Transfert {transfer.reference_number}</span>
+                                <Badge className={getStatusColor(transfer.status)}>
+                                  {getStatusText(transfer.status)}
+                                </Badge>
+                              </DialogTitle>
+                            </DialogHeader>
+                            
+                            <div className="space-y-4 mt-4">
+                              <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-lg">
+                                <div>
+                                  <p className="text-xs text-muted-foreground mb-1">Montant envoyé</p>
+                                  <p className="text-2xl font-bold">{transfer.amount.toLocaleString()} {transfer.from_currency}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-muted-foreground mb-1">Montant reçu</p>
+                                  <p className="text-2xl font-bold text-green-600">{transfer.converted_amount.toLocaleString()} {transfer.to_currency}</p>
+                                </div>
+                              </div>
+
+                              <div className="p-4 bg-indigo-50 border-l-4 border-indigo-500 rounded">
+                                <p className="text-xs font-semibold text-indigo-700 mb-3">CLIENT</p>
+                                <div className="grid grid-cols-2 gap-3 text-sm">
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">Nom</p>
+                                    <p className="font-semibold">{transfer.profiles?.first_name} {transfer.profiles?.last_name}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">Email</p>
+                                    <p className="font-semibold text-indigo-700">{transfer.user_email}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">Téléphone</p>
+                                    <p className="font-semibold">{transfer.profiles?.phone || '-'}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">Pays</p>
+                                    <p className="font-semibold">{transfer.profiles?.country || '-'}</p>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
+                                <p className="text-xs font-semibold text-blue-700 mb-3">BÉNÉFICIAIRE</p>
+                                <div className="grid grid-cols-2 gap-3 text-sm">
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">Nom</p>
+                                    <p className="font-semibold">{transfer.recipients?.name || 'Retrait personnel'}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">Téléphone</p>
+                                    <p className="font-semibold">{transfer.recipients?.phone || '-'}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">Pays</p>
+                                    <p className="font-semibold">{transfer.recipients?.country || '-'}</p>
+                                  </div>
+                                  {transfer.recipients?.bank_account && (
+                                    <div>
+                                      <p className="text-xs text-muted-foreground">Compte bancaire</p>
+                                      <p className="font-semibold">{transfer.recipients.bank_account}</p>
+                                    </div>
+                                  )}
+                                  {transfer.recipients?.wave_number && (
+                                    <div>
+                                      <p className="text-xs text-muted-foreground">Numéro Wave</p>
+                                      <p className="font-semibold">{transfer.recipients.wave_number}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {transfer.proof_image_url && (
+                                <div className="p-4 bg-green-50 rounded-lg">
+                                  <p className="text-xs font-semibold text-green-700 mb-2">PREUVE DE PAIEMENT</p>
+                                  <a href={transfer.proof_image_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm">
+                                    <FileImage className="inline h-4 w-4 mr-1" />
+                                    Voir la preuve
+                                  </a>
+                                </div>
+                              )}
+
+                              {transfer.notes && (
+                                <div className="p-4 bg-yellow-50 rounded-lg">
+                                  <p className="text-xs font-semibold text-yellow-700 mb-2">NOTES CLIENT</p>
+                                  <p className="text-sm">{transfer.notes}</p>
+                                </div>
+                              )}
+
+                              {transfer.admin_notes && (
+                                <div className="p-4 bg-purple-50 rounded-lg">
+                                  <p className="text-xs font-semibold text-purple-700 mb-2">NOTES ADMIN</p>
+                                  <p className="text-sm">{transfer.admin_notes}</p>
+                                </div>
+                              )}
+
+                              <div className="space-y-3">
+                                <Textarea
+                                  placeholder="Ajouter une note admin..."
+                                  value={adminNotes}
+                                  onChange={(e) => setAdminNotes(e.target.value)}
+                                  rows={3}
+                                />
+                                <div className="flex gap-2">
+                                  {transfer.status === 'awaiting_admin' && (
+                                    <>
+                                      <Button onClick={() => updateTransferStatus(transfer.id, 'approved', adminNotes)} className="flex-1">
+                                        <CheckCircle className="h-4 w-4 mr-1" />
+                                        Approuver
+                                      </Button>
+                                      <Button variant="destructive" onClick={() => updateTransferStatus(transfer.id, 'rejected', adminNotes)} className="flex-1">
+                                        <XCircle className="h-4 w-4 mr-1" />
+                                        Rejeter
+                                      </Button>
+                                    </>
+                                  )}
+                                  {transfer.status === 'approved' && (
+                                    <Button onClick={() => updateTransferStatus(transfer.id, 'completed', adminNotes)} className="w-full">
+                                      <CheckCircle className="h-4 w-4 mr-1" />
+                                      Marquer comme terminé
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="rates">
+            <ExchangeRateManager />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
