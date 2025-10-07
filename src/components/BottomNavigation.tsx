@@ -1,4 +1,4 @@
-import { Home, ArrowRightLeft, History, Users, User } from 'lucide-react';
+import { Home, ArrowRightLeft, Clock, Users, Settings } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -38,7 +38,7 @@ const BottomNavigation = () => {
       active: location.pathname === '/transfer'
     },
     {
-      icon: History,
+      icon: Clock,
       label: 'Historique',
       path: '/history',
       active: location.pathname === '/history'
@@ -50,10 +50,10 @@ const BottomNavigation = () => {
       active: location.pathname === '/recipients'
     },
     {
-      icon: User,
-      label: 'Profil',
-      path: '/profile',
-      active: location.pathname === '/profile'
+      icon: Settings,
+      label: 'Paramètres',
+      path: '/settings',
+      active: location.pathname === '/settings'
     }
   ];
 

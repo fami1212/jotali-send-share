@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { ArrowRightLeft, User, LogOut, Menu, X, Shield } from 'lucide-react';
+import { ArrowRightLeft, User, LogOut, Menu, X, Shield, Settings as SettingsIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { NotificationCenter } from './NotificationCenter';
+import { ThemeToggle } from './ThemeToggle';
 
 const Navbar = () => {
   const { user, signOut } = useAuth();
@@ -79,9 +80,10 @@ const Navbar = () => {
         <NavLinks />
 
         {/* User Menu & Notifications */}
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2">
           {user && (
             <>
+              <ThemeToggle />
               <NotificationCenter />
               <span className="text-sm text-muted-foreground hidden md:block">
                 Bonjour, {user.email}
@@ -124,6 +126,15 @@ const Navbar = () => {
               >
                 <User className="w-4 h-4" />
                 <span>Profil</span>
+              </Link>
+
+              <Link 
+                to="/settings" 
+                className="flex items-center space-x-2 px-3 py-2 text-sm hover:bg-accent rounded-md"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <SettingsIcon className="w-4 h-4" />
+                <span>Paramètres</span>
               </Link>
               
               {isAdmin && (

@@ -165,8 +165,21 @@ const Index = () => {
         </div>
 
         {/* Footer */}
-        <div className="text-center mt-12 text-white/70 text-sm">
-          <p>© 2024 Koligo. Tous droits réservés.</p>
+        <div className="text-center mt-12 space-y-4">
+          <div className="flex justify-center gap-4 text-sm">
+            <Link to="/track" className="text-white/80 hover:text-white transition-colors">
+              Suivre un transfert
+            </Link>
+            <span className="text-white/40">•</span>
+            <Link to="/terms" className="text-white/80 hover:text-white transition-colors">
+              CGU
+            </Link>
+            <span className="text-white/40">•</span>
+            <Link to="/privacy" className="text-white/80 hover:text-white transition-colors">
+              Confidentialité
+            </Link>
+          </div>
+          <p className="text-white/70 text-sm">© 2024 Koligo. Tous droits réservés.</p>
         </div>
       </div>
     </div>
