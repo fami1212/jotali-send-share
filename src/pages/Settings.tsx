@@ -1,15 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import Navbar from '@/components/Navbar';
 import BottomNavigation from '@/components/BottomNavigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import { ThemeToggle } from '@/components/ThemeToggle';
 import { useToast } from '@/hooks/use-toast';
-import { Bell, Moon, Shield, Smartphone } from 'lucide-react';
+import { Bell, Shield, Smartphone } from 'lucide-react';
 
 const Settings = () => {
   const { user } = useAuth();
@@ -39,30 +37,6 @@ const Settings = () => {
       
       <main className="container mx-auto px-4 py-8 max-w-4xl mb-20 md:mb-0">
         <h1 className="text-3xl font-bold mb-8">Paramètres</h1>
-
-        {/* Apparence */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Moon className="w-5 h-5" />
-              Apparence
-            </CardTitle>
-            <CardDescription>
-              Personnalisez l'apparence de l'application
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>Mode sombre</Label>
-                <p className="text-sm text-muted-foreground">
-                  Basculer entre le mode clair et sombre
-                </p>
-              </div>
-              <ThemeToggle />
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Notifications */}
         <Card className="mb-6">

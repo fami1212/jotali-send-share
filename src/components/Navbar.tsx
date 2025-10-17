@@ -5,7 +5,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { NotificationCenter } from './NotificationCenter';
-import { ThemeToggle } from './ThemeToggle';
 
 const Navbar = () => {
   const { user, signOut } = useAuth();
@@ -83,7 +82,6 @@ const Navbar = () => {
         <div className="flex items-center space-x-2">
           {user && (
             <>
-              <ThemeToggle />
               <NotificationCenter />
               <span className="text-sm text-muted-foreground hidden md:block">
                 Bonjour, {user.email}
