@@ -59,13 +59,13 @@ const Index = () => {
 
         {/* Hero Content */}
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-white mb-4 leading-tight">
+          <h2 className="text-3xl font-bold text-dark mb-4 leading-tight">
             Transférez votre argent
           </h2>
-          <h3 className="text-2xl font-bold text-white mb-6">
+          <h3 className="text-2xl font-bold text-dark mb-6">
             CFA ⟷ Dirham
           </h3>
-          <p className="text-lg text-white/90 mb-8">
+          <p className="text-lg text-dark/90 mb-8">
             Des transferts rapides, sécurisés et au meilleur taux
           </p>
         </div>
