@@ -35,8 +35,14 @@ const Settings = () => {
         <Navbar />
       </div>
       
-      <main className="container mx-auto px-4 py-8 max-w-4xl mb-20 md:mb-0">
-        <h1 className="text-3xl font-bold mb-8">Paramètres</h1>
+      <main className="container mx-auto px-4 py-8 max-w-4xl pb-24 md:pb-8">
+        {/* Mobile Header */}
+        <div className="md:hidden mb-6">
+          <h1 className="text-2xl font-bold mb-2">Paramètres ⚙️</h1>
+          <p className="text-sm text-muted-foreground">Gérez vos préférences</p>
+        </div>
+        
+        <h1 className="text-3xl font-bold mb-8 hidden md:block">Paramètres</h1>
 
         {/* Notifications */}
         <Card className="mb-6">

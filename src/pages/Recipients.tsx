@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import Navbar from '@/components/Navbar';
+import BottomNavigation from '@/components/BottomNavigation';
 
 interface Recipient {
   id: string;
@@ -170,11 +171,22 @@ const Recipients = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
+      <div className="hidden md:block">
+        <Navbar />
+      </div>
       
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <div>
+      <div className="container mx-auto px-4 py-8 pb-24 md:pb-8 max-w-7xl">
+        {/* Mobile Header */}
+        <div className="md:hidden mb-6">
+          <h1 className="text-2xl font-bold text-foreground mb-2">
+            Bénéficiaires 👥
+          </h1>
+          <p className="text-muted-foreground text-sm">
+            Gérez vos contacts
+          </p>
+        </div>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+          <div className="hidden md:block">
             <h1 className="text-3xl font-bold text-foreground mb-2">
               Bénéficiaires
             </h1>
@@ -185,7 +197,7 @@ const Recipients = () => {
 
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={resetForm}>
+              <Button onClick={resetForm} className="w-full md:w-auto">
                 <Plus className="w-4 h-4 mr-2" />
                 Ajouter un bénéficiaire
               </Button>
@@ -377,6 +389,8 @@ const Recipients = () => {
           )}
         </div>
       </div>
+      
+      <BottomNavigation />
     </div>
   );
 };

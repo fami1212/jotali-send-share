@@ -4,7 +4,7 @@ import BottomNavigation from '@/components/BottomNavigation';
 
 const Transfer = () => {
   return (
-    <div>
+    <div className="min-h-screen">
       <div className="hidden md:block">
         <Navbar />
       </div>
