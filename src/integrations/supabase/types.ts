@@ -92,6 +92,50 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          read: boolean
+          title: string
+          transfer_id: string | null
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          read?: boolean
+          title: string
+          transfer_id?: string | null
+          type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          read?: boolean
+          title?: string
+          transfer_id?: string | null
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_transfer_id_fkey"
+            columns: ["transfer_id"]
+            isOneToOne: false
+            referencedRelation: "transfers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -253,18 +297,9 @@ export type Database = {
         Args: { admin_role?: string; user_email: string }
         Returns: undefined
       }
-      generate_reference_number: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      is_admin: {
-        Args: { user_id_input?: string }
-        Returns: boolean
-      }
-      is_super_admin: {
-        Args: { user_id_input?: string }
-        Returns: boolean
-      }
+      generate_reference_number: { Args: never; Returns: string }
+      is_admin: { Args: { user_id_input?: string }; Returns: boolean }
+      is_super_admin: { Args: { user_id_input?: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
