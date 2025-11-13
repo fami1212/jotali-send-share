@@ -1,16 +1,21 @@
 import { useState, useEffect } from 'react';
-import { ArrowRightLeft, Search, Filter, Eye, X } from 'lucide-react';
+import { ArrowRightLeft, Search, Filter, Eye, X, Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import Navbar from '@/components/Navbar';
 import BottomNavigation from '@/components/BottomNavigation';
 import { Link } from 'react-router-dom';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { DateRange } from 'react-day-picker';
 
 interface Transfer {
   id: string;
@@ -38,6 +43,10 @@ const History = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [selectedTransfer, setSelectedTransfer] = useState<Transfer | null>(null);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [minAmount, setMinAmount] = useState<string>('');
+  const [maxAmount, setMaxAmount] = useState<string>('');
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -47,7 +56,7 @@ const History = () => {
 
   useEffect(() => {
     filterTransfers();
-  }, [transfers, searchTerm, statusFilter]);
+  }, [transfers, searchTerm, statusFilter, dateRange, minAmount, maxAmount]);
 
   const loadTransfers = async () => {
     if (!user) {
@@ -100,8 +109,51 @@ const History = () => {
       filtered = filtered.filter(transfer => transfer.status === statusFilter);
     }
 
+    // Filter by date range
+    if (dateRange?.from) {
+      filtered = filtered.filter(transfer => {
+        const transferDate = new Date(transfer.created_at);
+        const fromDate = new Date(dateRange.from!);
+        fromDate.setHours(0, 0, 0, 0);
+        
+        if (dateRange.to) {
+          const toDate = new Date(dateRange.to);
+          toDate.setHours(23, 59, 59, 999);
+          return transferDate >= fromDate && transferDate <= toDate;
+        }
+        
+        return transferDate >= fromDate;
+      });
+    }
+
+    // Filter by minimum amount
+    if (minAmount) {
+      const min = parseFloat(minAmount);
+      if (!isNaN(min)) {
+        filtered = filtered.filter(transfer => transfer.amount >= min);
+      }
+    }
+
+    // Filter by maximum amount
+    if (maxAmount) {
+      const max = parseFloat(maxAmount);
+      if (!isNaN(max)) {
+        filtered = filtered.filter(transfer => transfer.amount <= max);
+      }
+    }
+
     setFilteredTransfers(filtered);
   };
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('all');
+    setDateRange(undefined);
+    setMinAmount('');
+    setMaxAmount('');
+  };
+
+  const hasActiveFilters = searchTerm || statusFilter !== 'all' || dateRange?.from || minAmount || maxAmount;
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -190,38 +242,144 @@ const History = () => {
 
         {/* Filters */}
         <Card className="bg-white/95 backdrop-blur-sm p-4 rounded-2xl shadow-medium mb-6 border-0">
-          <div className="space-y-4 md:space-y-0 md:grid md:grid-cols-3 md:gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-500" />
-              <Input
-                placeholder="Rechercher par référence..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 rounded-xl border-2 border-slate-200 text-slate-800 bg-white"
-              />
+          <div className="space-y-4">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                <Input
+                  placeholder="Rechercher par référence ou bénéficiaire..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 rounded-xl border-2 border-slate-200 text-slate-800 bg-white"
+                />
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => setShowFilters(!showFilters)}
+                className={cn(
+                  "w-full md:w-auto rounded-xl border-2",
+                  showFilters && "bg-primary/5 border-primary"
+                )}
+              >
+                <Filter className="w-4 h-4 mr-2" />
+                Filtres avancés
+                {hasActiveFilters && (
+                  <Badge variant="secondary" className="ml-2 h-5 w-5 p-0 flex items-center justify-center rounded-full">
+                    !
+                  </Badge>
+                )}
+              </Button>
+              {hasActiveFilters && (
+                <Button
+                  variant="ghost"
+                  onClick={clearFilters}
+                  className="w-full md:w-auto rounded-xl"
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Réinitialiser
+                </Button>
+              )}
             </div>
-            
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="rounded-xl border-2 border-slate-200 bg-white">
-                <Filter className="w-4 h-4 mr-2 text-slate-500" />
-                <SelectValue placeholder="Filtrer par statut" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les statuts</SelectItem>
-                <SelectItem value="pending">En attente</SelectItem>
-                <SelectItem value="awaiting_admin">Attente admin</SelectItem>
-                <SelectItem value="approved">Approuvé</SelectItem>
-                <SelectItem value="completed">Terminé</SelectItem>
-                <SelectItem value="rejected">Rejeté</SelectItem>
-                <SelectItem value="cancelled">Annulé</SelectItem>
-              </SelectContent>
-            </Select>
 
-            <div className="flex items-center justify-center">
-              <Badge className="bg-primary/10 text-primary border-primary/20">
-                {filteredTransfers.length} transfert(s)
-              </Badge>
-            </div>
+            {showFilters && (
+              <div className="p-4 bg-slate-50 rounded-xl space-y-4 animate-in slide-in-from-top-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Status Filter */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-700">Statut</label>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="rounded-xl border-2 border-slate-200 bg-white">
+                        <SelectValue placeholder="Filtrer par statut" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tous les statuts</SelectItem>
+                        <SelectItem value="pending">En attente</SelectItem>
+                        <SelectItem value="awaiting_admin">Attente admin</SelectItem>
+                        <SelectItem value="approved">Approuvé</SelectItem>
+                        <SelectItem value="completed">Terminé</SelectItem>
+                        <SelectItem value="rejected">Rejeté</SelectItem>
+                        <SelectItem value="cancelled">Annulé</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Date Range Filter */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-700">Période</label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal rounded-xl border-2 border-slate-200 bg-white",
+                            !dateRange && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {dateRange?.from ? (
+                            dateRange.to ? (
+                              <>
+                                {format(dateRange.from, "dd/MM/yyyy")} -{" "}
+                                {format(dateRange.to, "dd/MM/yyyy")}
+                              </>
+                            ) : (
+                              format(dateRange.from, "dd/MM/yyyy")
+                            )
+                          ) : (
+                            <span>Sélectionner une période</span>
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="range"
+                          selected={dateRange}
+                          onSelect={setDateRange}
+                          initialFocus
+                          numberOfMonths={2}
+                          className={cn("p-3 pointer-events-auto")}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  {/* Min Amount Filter */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-700">Montant minimum</label>
+                    <Input
+                      type="number"
+                      placeholder="0.00"
+                      value={minAmount}
+                      onChange={(e) => setMinAmount(e.target.value)}
+                      min="0"
+                      step="0.01"
+                      className="rounded-xl border-2 border-slate-200 bg-white"
+                    />
+                  </div>
+
+                  {/* Max Amount Filter */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-700">Montant maximum</label>
+                    <Input
+                      type="number"
+                      placeholder="0.00"
+                      value={maxAmount}
+                      onChange={(e) => setMaxAmount(e.target.value)}
+                      min="0"
+                      step="0.01"
+                      className="rounded-xl border-2 border-slate-200 bg-white"
+                    />
+                  </div>
+                </div>
+                
+                {/* Results counter */}
+                <div className="flex items-center justify-center pt-2">
+                  <Badge className="bg-primary/10 text-primary border-primary/20">
+                    {filteredTransfers.length} résultat(s)
+                  </Badge>
+                </div>
+              </div>
+            )}
           </div>
         </Card>
 
