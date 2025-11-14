@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, XCircle, FileImage } from 'lucide-react';
+import { CheckCircle, XCircle, FileImage, FileDown, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,9 @@ import Navbar from '@/components/Navbar';
 import AdminStats from '@/components/admin/AdminStats';
 import AdminFilters from '@/components/admin/AdminFilters';
 import ExchangeRateManager from '@/components/admin/ExchangeRateManager';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface Transfer {
   id: string;
@@ -103,6 +106,10 @@ const Admin = () => {
     weekTransfers: 0,
     monthTransfers: 0,
   });
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 12;
 
   useEffect(() => {
     checkAdminStatus();
@@ -116,6 +123,7 @@ const Admin = () => {
 
   useEffect(() => {
     filterTransfers();
+    setCurrentPage(1); // Reset to first page when filters change
   }, [transfers, searchQuery, currencyFilter, methodFilter, dateFilter]);
 
   const checkAdminStatus = async () => {
@@ -373,28 +381,85 @@ const Admin = () => {
     return count;
   };
 
-  const handleExport = () => {
-    const csv = [
-      ['Référence', 'Date', 'Statut', 'Client', 'Montant envoyé', 'Montant reçu', 'Méthode'].join(','),
-      ...filteredTransfers.map(t => [
-        t.reference_number,
-        new Date(t.created_at).toLocaleDateString('fr-FR'),
-        getStatusText(t.status),
-        t.user_email,
-        `${t.amount} ${t.from_currency}`,
-        `${t.converted_amount} ${t.to_currency}`,
-        t.transfer_method === 'bank' ? 'Virement' : 'Wave'
-      ].join(','))
-    ].join('\n');
+  const handleExportExcel = () => {
+    const exportData = filteredTransfers.map(t => ({
+      'Référence': t.reference_number,
+      'Date': new Date(t.created_at).toLocaleDateString('fr-FR'),
+      'Statut': getStatusText(t.status),
+      'Client': t.user_email || `${t.profiles?.first_name || ''} ${t.profiles?.last_name || ''}`.trim(),
+      'Téléphone': t.profiles?.phone || '-',
+      'Pays': t.profiles?.country || '-',
+      'Montant envoyé': t.amount,
+      'Devise envoyée': t.from_currency,
+      'Montant converti': t.converted_amount,
+      'Devise reçue': t.to_currency,
+      'Taux de change': t.exchange_rate,
+      'Frais': t.fees,
+      'Total': t.total_amount,
+      'Méthode': t.transfer_method === 'bank' ? 'Virement bancaire' : 'Wave',
+      'Destinataire': t.recipients?.name || '-',
+      'Téléphone destinataire': t.recipients?.phone || '-',
+      'Pays destinataire': t.recipients?.country || '-',
+      'Notes': t.notes || '-',
+      'Notes admin': t.admin_notes || '-',
+    }));
 
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `transferts_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Transferts');
+    
+    // Auto-size columns
+    const maxWidth = 50;
+    const colWidths = Object.keys(exportData[0] || {}).map(key => ({
+      wch: Math.min(
+        maxWidth,
+        Math.max(
+          key.length,
+          ...exportData.map(row => String(row[key as keyof typeof row]).length)
+        )
+      )
+    }));
+    ws['!cols'] = colWidths;
+
+    XLSX.writeFile(wb, `transferts_${new Date().toISOString().split('T')[0]}.xlsx`);
 
     toast({
-      title: "Export réussi",
+      title: "Export Excel réussi",
+      description: `${filteredTransfers.length} transferts exportés`,
+    });
+  };
+
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    
+    doc.setFontSize(18);
+    doc.text('Historique des transferts', 14, 22);
+    doc.setFontSize(11);
+    doc.text(`Date: ${new Date().toLocaleDateString('fr-FR')}`, 14, 30);
+    doc.text(`Total: ${filteredTransfers.length} transferts`, 14, 36);
+
+    const tableData = filteredTransfers.map(t => [
+      t.reference_number,
+      new Date(t.created_at).toLocaleDateString('fr-FR'),
+      getStatusText(t.status),
+      t.user_email || `${t.profiles?.first_name || ''} ${t.profiles?.last_name || ''}`.trim(),
+      `${t.amount} ${t.from_currency}`,
+      `${t.converted_amount} ${t.to_currency}`,
+      t.transfer_method === 'bank' ? 'Virement' : 'Wave',
+    ]);
+
+    autoTable(doc, {
+      startY: 42,
+      head: [['Référence', 'Date', 'Statut', 'Client', 'Envoyé', 'Reçu', 'Méthode']],
+      body: tableData,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [71, 85, 105] },
+    });
+
+    doc.save(`transferts_${new Date().toISOString().split('T')[0]}.pdf`);
+
+    toast({
+      title: "Export PDF réussi",
       description: `${filteredTransfers.length} transferts exportés`,
     });
   };
@@ -507,7 +572,8 @@ const Admin = () => {
               dateFilter={dateFilter}
               setDateFilter={setDateFilter}
               onRefresh={loadTransfers}
-              onExport={handleExport}
+              onExportExcel={handleExportExcel}
+              onExportPDF={handleExportPDF}
               activeFiltersCount={getActiveFiltersCount()}
             />
 
@@ -538,8 +604,11 @@ const Admin = () => {
                 <p className="text-muted-foreground">Aucun transfert trouvé</p>
               </Card>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredTransfers.map((transfer) => (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredTransfers
+                    .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                    .map((transfer) => (
                   <Card key={transfer.id} className={`p-4 hover:shadow-lg transition-shadow relative ${isUrgent(transfer) ? 'border-red-500 border-2' : ''}`}>
                     <div className="absolute top-2 left-2">
                       <Checkbox
@@ -770,6 +839,61 @@ const Admin = () => {
                   </Card>
                 ))}
               </div>
+              
+              {/* Pagination */}
+              {filteredTransfers.length > itemsPerPage && (
+                <div className="flex items-center justify-center gap-2 mt-6">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Précédent
+                  </Button>
+                  
+                  <div className="flex items-center gap-2">
+                    {Array.from({ length: Math.ceil(filteredTransfers.length / itemsPerPage) }, (_, i) => i + 1)
+                      .filter(page => {
+                        const totalPages = Math.ceil(filteredTransfers.length / itemsPerPage);
+                        return page === 1 || 
+                               page === totalPages || 
+                               (page >= currentPage - 1 && page <= currentPage + 1);
+                      })
+                      .map((page, idx, arr) => (
+                        <div key={page} className="flex items-center gap-2">
+                          {idx > 0 && arr[idx - 1] !== page - 1 && (
+                            <span className="text-muted-foreground">...</span>
+                          )}
+                          <Button
+                            variant={currentPage === page ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setCurrentPage(page)}
+                          >
+                            {page}
+                          </Button>
+                        </div>
+                      ))
+                    }
+                  </div>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredTransfers.length / itemsPerPage), p + 1))}
+                    disabled={currentPage === Math.ceil(filteredTransfers.length / itemsPerPage)}
+                  >
+                    Suivant
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                  
+                  <span className="text-sm text-muted-foreground ml-4">
+                    {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, filteredTransfers.length)} sur {filteredTransfers.length}
+                  </span>
+                </div>
+              )}
+            </>
             )}
           </TabsContent>
 

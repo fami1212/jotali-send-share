@@ -1,8 +1,9 @@
-import { Search, Filter, Download, RefreshCw } from 'lucide-react';
+import { Search, Filter, Download, RefreshCw, FileDown, FileText } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 interface AdminFiltersProps {
   searchQuery: string;
@@ -16,7 +17,8 @@ interface AdminFiltersProps {
   dateFilter: string;
   setDateFilter: (value: string) => void;
   onRefresh: () => void;
-  onExport: () => void;
+  onExportExcel: () => void;
+  onExportPDF: () => void;
   activeFiltersCount: number;
 }
 
@@ -32,7 +34,8 @@ const AdminFilters = ({
   dateFilter,
   setDateFilter,
   onRefresh,
-  onExport,
+  onExportExcel,
+  onExportPDF,
   activeFiltersCount
 }: AdminFiltersProps) => {
   return (
@@ -108,9 +111,23 @@ const AdminFilters = ({
           <Button variant="outline" size="icon" onClick={onRefresh} title="Rafraîchir">
             <RefreshCw className="h-4 w-4" />
           </Button>
-          <Button variant="outline" size="icon" onClick={onExport} title="Exporter">
-            <Download className="h-4 w-4" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon" title="Exporter">
+                <Download className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={onExportExcel}>
+                <FileDown className="h-4 w-4 mr-2" />
+                Exporter en Excel
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onExportPDF}>
+                <FileText className="h-4 w-4 mr-2" />
+                Exporter en PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
