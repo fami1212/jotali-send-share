@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
-import { ArrowRightLeft, Search, Filter, Eye, X, Calendar as CalendarIcon } from 'lucide-react';
+import { ArrowRightLeft, Search, Filter, Eye, X, Calendar as CalendarIcon, Download, FileSpreadsheet, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -24,6 +27,7 @@ interface Transfer {
   from_currency: string;
   to_currency: string;
   converted_amount: number;
+  exchange_rate: number;
   status: string;
   transfer_type?: string;
   transfer_method: string;
@@ -47,6 +51,8 @@ const History = () => {
   const [minAmount, setMinAmount] = useState<string>('');
   const [maxAmount, setMaxAmount] = useState<string>('');
   const [showFilters, setShowFilters] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     if (user) {
@@ -155,6 +161,93 @@ const History = () => {
 
   const hasActiveFilters = searchTerm || statusFilter !== 'all' || dateRange?.from || minAmount || maxAmount;
 
+  // Pagination
+  const totalPages = Math.ceil(filteredTransfers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedTransfers = filteredTransfers.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, dateRange, minAmount, maxAmount]);
+
+  // Export to Excel with proper columns
+  const exportToExcel = () => {
+    const dataToExport = filteredTransfers.map(transfer => ({
+      'Référence': transfer.reference_number,
+      'Date': formatDate(transfer.created_at),
+      'Destinataire': transfer.recipients?.name || 'Retrait personnel',
+      'Téléphone': transfer.recipients?.phone || '-',
+      'Montant envoyé': transfer.amount,
+      'Devise envoyée': transfer.from_currency,
+      'Montant reçu': transfer.converted_amount,
+      'Devise reçue': transfer.to_currency,
+      'Taux de change': transfer.exchange_rate,
+      'Méthode': transfer.transfer_method === 'bank' ? 'Virement bancaire' : 'Wave',
+      'Statut': getStatusText(transfer.status),
+      'Date de finalisation': transfer.completed_at ? formatDate(transfer.completed_at) : '-',
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Transferts');
+    
+    // Auto-size columns
+    const maxWidth = 20;
+    const colWidths = Object.keys(dataToExport[0] || {}).map(key => ({
+      wch: Math.min(Math.max(key.length, 10), maxWidth)
+    }));
+    ws['!cols'] = colWidths;
+    
+    XLSX.writeFile(wb, `historique-transferts-${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
+  // Export to PDF
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    
+    // Add title
+    doc.setFontSize(16);
+    doc.text('Historique des transferts', 14, 15);
+    
+    // Add date
+    doc.setFontSize(10);
+    doc.text(`Généré le ${new Date().toLocaleDateString('fr-FR')}`, 14, 22);
+    
+    // Add filter info if any
+    if (hasActiveFilters) {
+      doc.setFontSize(9);
+      let filterText = 'Filtres appliqués: ';
+      if (statusFilter !== 'all') filterText += `Statut: ${getStatusText(statusFilter)}, `;
+      if (dateRange?.from) filterText += `Date: ${format(dateRange.from, 'dd/MM/yyyy')}${dateRange.to ? ` - ${format(dateRange.to, 'dd/MM/yyyy')}` : ''}, `;
+      if (minAmount) filterText += `Min: ${minAmount}, `;
+      if (maxAmount) filterText += `Max: ${maxAmount}`;
+      doc.text(filterText, 14, 28);
+    }
+
+    // Prepare table data
+    const tableData = filteredTransfers.map(transfer => [
+      transfer.reference_number,
+      formatDate(transfer.created_at),
+      transfer.recipients?.name || 'Retrait personnel',
+      `${transfer.amount} ${transfer.from_currency}`,
+      `${transfer.converted_amount} ${transfer.to_currency}`,
+      transfer.transfer_method === 'bank' ? 'Virement' : 'Wave',
+      getStatusText(transfer.status),
+    ]);
+
+    autoTable(doc, {
+      startY: hasActiveFilters ? 32 : 28,
+      head: [['Référence', 'Date', 'Destinataire', 'Envoyé', 'Reçu', 'Méthode', 'Statut']],
+      body: tableData,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [59, 130, 246] },
+    });
+    
+    doc.save(`historique-transferts-${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-warning/10 text-warning border-warning/20';
@@ -240,8 +333,32 @@ const History = () => {
           </p>
         </div>
 
-        {/* Filters */}
+        {/* Export and Filters */}
         <Card className="bg-white/95 backdrop-blur-sm p-4 rounded-2xl shadow-medium mb-6 border-0">
+          <div className="flex flex-col md:flex-row gap-3 mb-4">
+            <Button
+              variant="outline"
+              onClick={exportToExcel}
+              disabled={filteredTransfers.length === 0}
+              className="w-full md:w-auto rounded-xl border-2 border-success/20 text-success hover:bg-success/5"
+            >
+              <FileSpreadsheet className="w-4 h-4 mr-2" />
+              Excel
+            </Button>
+            <Button
+              variant="outline"
+              onClick={exportToPDF}
+              disabled={filteredTransfers.length === 0}
+              className="w-full md:w-auto rounded-xl border-2 border-destructive/20 text-destructive hover:bg-destructive/5"
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              PDF
+            </Button>
+            <div className="flex-1" />
+            <Badge variant="secondary" className="self-center">
+              {filteredTransfers.length} transfert(s)
+            </Badge>
+          </div>
           <div className="space-y-4">
             <div className="flex flex-col md:flex-row gap-4">
               <div className="flex-1 relative">
@@ -385,8 +502,8 @@ const History = () => {
 
         {/* Transfers List */}
         <div className="space-y-3">
-          {filteredTransfers.length > 0 ? (
-            filteredTransfers.map((transfer) => (
+          {paginatedTransfers.length > 0 ? (
+            paginatedTransfers.map((transfer) => (
               <Card key={transfer.id} className="bg-white/95 backdrop-blur-sm p-4 rounded-2xl shadow-medium border-0 hover:shadow-strong transition-all duration-200">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                   <div className="flex items-start space-x-3 flex-1 min-w-0">
@@ -452,6 +569,44 @@ const History = () => {
             </Card>
           )}
         </div>
+
+        {/* Pagination */}
+        {filteredTransfers.length > 0 && totalPages > 1 && (
+          <Card className="bg-white/95 backdrop-blur-sm p-4 rounded-2xl shadow-medium mt-6 border-0">
+            <div className="flex items-center justify-between">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="rounded-xl"
+              >
+                <ChevronLeft className="w-4 h-4 mr-1" />
+                Précédent
+              </Button>
+              
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-slate-600">
+                  Page {currentPage} sur {totalPages}
+                </span>
+                <Badge variant="secondary" className="hidden md:inline-flex">
+                  {startIndex + 1}-{Math.min(endIndex, filteredTransfers.length)} sur {filteredTransfers.length}
+                </Badge>
+              </div>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="rounded-xl"
+              >
+                Suivant
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            </div>
+          </Card>
+        )}
       </div>
       
       {/* Transfer Details Dialog */}
