@@ -41,7 +41,8 @@ const UploadProof = () => {
         .from('transfers')
         .select('*')
         .eq('user_id', user?.id)
-        .in('status', ['pending', 'approved'])
+        .in('status', ['pending', 'approved', 'awaiting_admin'])
+        .is('proof_image_url', null)
         .order('created_at', { ascending: false });
 
       if (data) {
@@ -89,14 +90,17 @@ const UploadProof = () => {
 
       const { error: updateError } = await supabase
         .from('transfers')
-        .update({ proof_image_url: fileName })
+        .update({ 
+          proof_image_url: fileName,
+          status: 'awaiting_admin'
+        })
         .eq('id', selectedTransfer);
 
       if (updateError) throw updateError;
 
       toast({
         title: "Succès",
-        description: "Preuve de paiement ajoutée avec succès",
+        description: "Preuve de paiement ajoutée avec succès. En attente de vérification par l'admin.",
       });
 
       setProofImage(null);
@@ -143,24 +147,38 @@ const UploadProof = () => {
           <Card className="bg-white/95 backdrop-blur-sm p-6 rounded-2xl shadow-medium border-0">
             <h2 className="text-lg font-semibold mb-4">Sélectionner un transfert</h2>
             
+            {transfers.length === 0 && (
+              <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                <p className="text-xs text-amber-800">
+                  <strong>Aucun transfert disponible</strong> - Seuls les transferts en attente ou approuvés sans preuve peuvent être modifiés ici.
+                </p>
+              </div>
+            )}
+            
             <Select value={selectedTransfer} onValueChange={setSelectedTransfer}>
               <SelectTrigger className="w-full h-12 rounded-xl">
                 <SelectValue placeholder="Choisir un transfert" />
               </SelectTrigger>
               <SelectContent>
-                {transfers.map((transfer) => (
-                  <SelectItem key={transfer.id} value={transfer.id}>
-                    <div className="flex items-center justify-between w-full">
-                      <span>{transfer.reference_number}</span>
-                      <span className="ml-4 text-sm text-muted-foreground">
-                        {transfer.amount} {transfer.from_currency}
-                      </span>
-                      {transfer.proof_image_url && (
-                        <CheckCircle className="w-4 h-4 text-green-600 ml-2" />
-                      )}
-                    </div>
-                  </SelectItem>
-                ))}
+                {transfers.length === 0 ? (
+                  <div className="p-4 text-sm text-center text-muted-foreground">
+                    Aucun transfert disponible pour l'ajout de preuve
+                  </div>
+                ) : (
+                  transfers.map((transfer) => (
+                    <SelectItem key={transfer.id} value={transfer.id}>
+                      <div className="flex items-center justify-between w-full">
+                        <span>{transfer.reference_number}</span>
+                        <span className="ml-4 text-sm text-muted-foreground">
+                          {transfer.amount} {transfer.from_currency}
+                        </span>
+                        {transfer.proof_image_url && (
+                          <CheckCircle className="w-4 h-4 text-green-600 ml-2" />
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
 
