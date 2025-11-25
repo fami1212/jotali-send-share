@@ -16,6 +16,7 @@ import AdminStats from '@/components/admin/AdminStats';
 import AdminFilters from '@/components/admin/AdminFilters';
 import ExchangeRateManager from '@/components/admin/ExchangeRateManager';
 import AdminCharts from '@/components/admin/AdminCharts';
+import AdminProofsManager from '@/components/admin/AdminProofsManager';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -553,9 +554,10 @@ const Admin = () => {
         </div>
 
         <Tabs defaultValue="transfers" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-6">
+          <TabsList className="grid w-full grid-cols-4 mb-6">
             <TabsTrigger value="transfers">Transferts</TabsTrigger>
             <TabsTrigger value="analytics">Analytiques</TabsTrigger>
+            <TabsTrigger value="proofs">Preuves</TabsTrigger>
             <TabsTrigger value="rates">Taux de change</TabsTrigger>
           </TabsList>
 
@@ -906,6 +908,15 @@ const Admin = () => {
             </div>
             
             <AdminCharts transfers={transfers} />
+          </TabsContent>
+
+          <TabsContent value="proofs" className="space-y-6">
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-foreground mb-2">Gestion des Preuves</h2>
+              <p className="text-muted-foreground">Consulter et gérer les preuves de paiement</p>
+            </div>
+            
+            <AdminProofsManager />
           </TabsContent>
 
           <TabsContent value="rates">
