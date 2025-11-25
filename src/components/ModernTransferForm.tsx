@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRightLeft, Plus, Banknote, Smartphone, Upload, ArrowLeft } from 'lucide-react';
+import { ArrowRightLeft, Plus, Banknote, Smartphone, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import BottomNavigation from './BottomNavigation';
+import AddRecipientDialog from './AddRecipientDialog';
 
 interface Recipient {
   id: string;
@@ -39,9 +39,9 @@ const ModernTransferForm = () => {
   const [selectedRecipient, setSelectedRecipient] = useState('');
   const [recipients, setRecipients] = useState<Recipient[]>([]);
   const [notes, setNotes] = useState('');
-  const [proofImage, setProofImage] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState(1);
+  const [isAddRecipientOpen, setIsAddRecipientOpen] = useState(false);
 
   useEffect(() => {
     loadRecipients();
@@ -112,23 +112,6 @@ const ModernTransferForm = () => {
     return 0; // 0% for bank transfer
   };
 
-  const uploadProofImage = async (transferId: string): Promise<string | null> => {
-    if (!proofImage || !user?.id) return null;
-
-    const fileExt = proofImage.name.split('.').pop();
-    const fileName = `${user.id}/${transferId}.${fileExt}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('transfer-proofs')
-      .upload(fileName, proofImage);
-
-    if (uploadError) {
-      console.error('Error uploading proof:', uploadError);
-      return null;
-    }
-
-    return fileName;
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -151,14 +134,6 @@ const ModernTransferForm = () => {
       return;
     }
 
-    if (transferType === 'withdraw' && !proofImage) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez ajouter une preuve de paiement pour un retrait",
-        variant: "destructive",
-      });
-      return;
-    }
 
     setIsLoading(true);
 
@@ -177,7 +152,7 @@ const ModernTransferForm = () => {
         fees,
         total_amount: parseFloat(amount) + fees,
         transfer_method: transferMethod,
-        transfer_type: transferType,
+        transfer_type: transferType === 'send' ? 'transfer' : 'withdrawal',
         reference_number: refData || `TR${Date.now()}`,
         notes,
         status: 'pending'
@@ -193,21 +168,11 @@ const ModernTransferForm = () => {
         throw error;
       }
 
-      if (proofImage && transfer) {
-        const proofUrl = await uploadProofImage(transfer.id);
-        if (proofUrl) {
-          await supabase
-            .from('transfers')
-            .update({ proof_image_url: proofUrl })
-            .eq('id', transfer.id);
-        }
-      }
-
       toast({
         title: transferType === 'send' ? "Envoi créé" : "Demande de retrait créée",
         description: transferType === 'send' 
           ? "Votre envoi vers le bénéficiaire a été créé avec succès"
-          : "Votre demande de retrait est en attente de validation",
+          : "Votre demande de retrait est en attente de validation. Vous pourrez ajouter la preuve de paiement depuis votre historique.",
       });
 
       navigate('/history');
@@ -434,21 +399,11 @@ const ModernTransferForm = () => {
                   </div>
 
                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-slate-600">Taux</span>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-600">Taux de change</span>
                       <span className="font-medium text-slate-800">
                         1 {fromCurrency} = {exchangeRate.toFixed(fromCurrency === 'CFA' ? 6 : 2)} {toCurrency}
                       </span>
-                    </div>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-slate-600">Frais</span>
-                      <span className={`font-medium ${fees > 0 ? 'text-slate-800' : 'text-success'}`}>
-                        {fees > 0 ? formatCurrency(fees, fromCurrency) : 'Gratuit'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm pt-2 border-t border-slate-200">
-                      <span className="font-medium text-slate-600">Total</span>
-                      <span className="font-bold text-slate-800">{formatCurrency(totalAmount, fromCurrency)}</span>
                     </div>
                   </div>
                 </div>
@@ -459,11 +414,15 @@ const ModernTransferForm = () => {
                 <Card className="bg-white/90 backdrop-blur-sm p-4 rounded-2xl shadow-medium">
                   <div className="flex items-center justify-between mb-3">
                     <h2 className="text-lg font-semibold">Bénéficiaire</h2>
-                    <Button asChild variant="outline" size="sm" className="rounded-xl">
-                      <a href="/recipients">
-                        <Plus className="w-4 h-4 mr-1" />
-                        Ajouter
-                      </a>
+                    <Button 
+                      type="button"
+                      variant="outline" 
+                      size="sm" 
+                      className="rounded-xl"
+                      onClick={() => setIsAddRecipientOpen(true)}
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Ajouter
                     </Button>
                   </div>
 
@@ -534,48 +493,57 @@ const ModernTransferForm = () => {
 
               {/* Bank Accounts List - Only for bank transfer */}
               {transferMethod === 'bank' && (
-                <Card className="bg-white/90 backdrop-blur-sm p-4 rounded-2xl shadow-medium">
-                  <h2 className="text-base font-semibold mb-3 text-center text-slate-800">Nos RIB bancaires</h2>
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                <Card className="bg-white/90 backdrop-blur-sm p-5 rounded-2xl shadow-medium">
+                  <h2 className="text-base font-semibold mb-4 text-slate-800">
+                    💳 Nos comptes bancaires
+                  </h2>
+                  <div className="space-y-3">
                     {bankAccounts.map((bank, index) => (
-                      <div key={index} className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                        <p className="font-semibold text-sm text-slate-800">{bank.name}</p>
-                        <p className="text-xs text-slate-600 font-mono mt-1">{bank.rib}</p>
+                      <div 
+                        key={index} 
+                        className="bg-gradient-to-r from-slate-50 to-slate-100 p-4 rounded-xl border-l-4 border-primary shadow-sm hover:shadow-md transition-shadow"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <p className="font-bold text-slate-800 mb-1">{bank.name}</p>
+                            <p className="text-sm text-slate-600 font-mono bg-white px-3 py-2 rounded-lg border border-slate-200 tracking-wide">
+                              {bank.rib}
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
-                  <p className="text-xs text-muted-foreground text-center mt-3">
-                    Effectuez votre virement sur l'un de ces comptes
-                  </p>
-                </Card>
-              )}
-
-              {/* Proof Upload - Only for Withdrawal */}
-              {transferType === 'withdraw' && (
-                <Card className="bg-white/90 backdrop-blur-sm p-4 rounded-2xl shadow-medium">
-                  <h2 className="text-lg font-semibold mb-3 text-center">Preuve de paiement</h2>
-                  <p className="text-sm text-muted-foreground text-center mb-3">
-                    Envoyez-nous une capture d'écran de votre {transferMethod === 'bank' ? 'virement bancaire' : 'paiement mobile'}
-                  </p>
-                  <div className="space-y-3">
-                    <Label htmlFor="proof" className="flex items-center justify-center w-full h-32 border-2 border-dashed rounded-xl cursor-pointer hover:bg-accent/50 transition-colors">
-                      <div className="text-center">
-                        <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">
-                          {proofImage ? proofImage.name : 'Télécharger la capture'}
-                        </span>
-                      </div>
-                      <Input
-                        id="proof"
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => setProofImage(e.target.files?.[0] || null)}
-                      />
-                    </Label>
+                  <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                    <p className="text-xs text-blue-800 text-center font-medium">
+                      💡 Effectuez votre virement sur l'un de ces comptes
+                    </p>
                   </div>
                 </Card>
               )}
+
+
+              {/* Summary Card */}
+              <Card className="bg-gradient-to-br from-primary/10 to-secondary/10 backdrop-blur-sm p-5 rounded-2xl shadow-lg border-2 border-primary/20">
+                <h3 className="text-base font-semibold mb-3 text-slate-800">Récapitulatif</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-600">Montant</span>
+                    <span className="font-semibold text-slate-800">{formatCurrency(parseFloat(amount) || 0, fromCurrency)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-600">Frais de service</span>
+                    <span className={`font-semibold ${fees > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                      {fees > 0 ? `+ ${formatCurrency(fees, fromCurrency)}` : 'Gratuit'}
+                    </span>
+                  </div>
+                  <div className="h-px bg-slate-300 my-2"></div>
+                  <div className="flex justify-between pt-1">
+                    <span className="font-bold text-slate-800">Total à payer</span>
+                    <span className="font-bold text-lg text-primary">{formatCurrency(totalAmount, fromCurrency)}</span>
+                  </div>
+                </div>
+              </Card>
 
               {/* Notes */}
               <Card className="bg-white/90 backdrop-blur-sm p-4 rounded-2xl shadow-medium">
@@ -599,6 +567,12 @@ const ModernTransferForm = () => {
           )}
         </form>
       </div>
+
+      <AddRecipientDialog
+        open={isAddRecipientOpen}
+        onOpenChange={setIsAddRecipientOpen}
+        onRecipientAdded={loadRecipients}
+      />
     </div>
   );
 };
