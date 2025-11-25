@@ -15,7 +15,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import Navbar from '@/components/Navbar';
 import BottomNavigation from '@/components/BottomNavigation';
-import { Link, useNavigate } from 'react-router-dom';
+import UploadProofDialog from '@/components/UploadProofDialog';
+import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { DateRange } from 'react-day-picker';
@@ -41,7 +42,6 @@ interface Transfer {
 
 const History = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [filteredTransfers, setFilteredTransfers] = useState<Transfer[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -53,6 +53,8 @@ const History = () => {
   const [maxAmount, setMaxAmount] = useState<string>('');
   const [showFilters, setShowFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [showUploadProofDialog, setShowUploadProofDialog] = useState(false);
+  const [selectedTransferIdForProof, setSelectedTransferIdForProof] = useState<string | undefined>();
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -697,8 +699,8 @@ const History = () => {
               <div className="flex gap-3">
                 <Button 
                   onClick={() => {
-                    navigate('/upload-proof', { state: { transferId: selectedTransfer.id } });
-                    setSelectedTransfer(null);
+                    setSelectedTransferIdForProof(selectedTransfer.id);
+                    setShowUploadProofDialog(true);
                   }}
                   variant="outline"
                   className="flex-1 border-2 border-primary/20 text-primary hover:bg-primary/5"
@@ -717,6 +719,17 @@ const History = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Upload Proof Dialog */}
+      <UploadProofDialog 
+        open={showUploadProofDialog}
+        onOpenChange={setShowUploadProofDialog}
+        preselectedTransferId={selectedTransferIdForProof}
+        onSuccess={() => {
+          loadTransfers();
+          setSelectedTransferIdForProof(undefined);
+        }}
+      />
 
       {/* Bottom Navigation */}
       <BottomNavigation />
