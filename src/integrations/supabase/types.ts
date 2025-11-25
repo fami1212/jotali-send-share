@@ -223,7 +223,11 @@ export type Database = {
           from_currency: string
           id: string
           notes: string | null
+          proof_admin_comment: string | null
           proof_image_url: string | null
+          proof_verified: boolean | null
+          proof_verified_at: string | null
+          proof_verified_by: string | null
           recipient_id: string | null
           reference_number: string
           status: string
@@ -245,7 +249,11 @@ export type Database = {
           from_currency: string
           id?: string
           notes?: string | null
+          proof_admin_comment?: string | null
           proof_image_url?: string | null
+          proof_verified?: boolean | null
+          proof_verified_at?: string | null
+          proof_verified_by?: string | null
           recipient_id?: string | null
           reference_number: string
           status?: string
@@ -267,7 +275,11 @@ export type Database = {
           from_currency?: string
           id?: string
           notes?: string | null
+          proof_admin_comment?: string | null
           proof_image_url?: string | null
+          proof_verified?: boolean | null
+          proof_verified_at?: string | null
+          proof_verified_by?: string | null
           recipient_id?: string | null
           reference_number?: string
           status?: string

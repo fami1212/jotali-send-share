@@ -16,6 +16,7 @@ import Recipients from "./pages/Recipients";
 import Profile from "./pages/Profile";
 import Admin from "./pages/Admin";
 import AdminProofs from "./pages/AdminProofs";
+import UnifiedAdmin from "./pages/UnifiedAdmin";
 import Settings from "./pages/Settings";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
@@ -75,6 +76,11 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/admin" element={
+              <AdminRoute>
+                <UnifiedAdmin />
+              </AdminRoute>
+            } />
+            <Route path="/admin/old" element={
               <AdminRoute>
                 <Admin />
               </AdminRoute>

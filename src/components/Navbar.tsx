@@ -92,13 +92,6 @@ const Navbar = () => {
                     <Shield className="w-4 h-4" />
                     <span>Admin</span>
                   </Link>
-                  <Link
-                    to="/admin/proofs"
-                    className="hidden md:flex items-center space-x-1 px-3 py-1.5 rounded-lg text-purple-600 hover:bg-purple-50 transition-colors text-sm font-medium"
-                  >
-                    <Shield className="w-4 h-4" />
-                    <span>Preuves</span>
-                  </Link>
                 </>
               )}
               <NotificationCenter />
@@ -163,14 +156,6 @@ const Navbar = () => {
                   >
                     <Shield className="w-4 h-4" />
                     <span>Administration</span>
-                  </Link>
-                  <Link 
-                    to="/admin/proofs" 
-                    className="flex items-center space-x-2 px-3 py-2 text-sm hover:bg-accent rounded-md text-purple-600"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    <Shield className="w-4 h-4" />
-                    <span>Gestion des preuves</span>
                   </Link>
                 </>
               )}
