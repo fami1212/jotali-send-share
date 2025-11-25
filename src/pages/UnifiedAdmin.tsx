@@ -685,8 +685,32 @@ const UnifiedAdmin = () => {
 
             {/* Proofs Grid */}
             {filteredProofs.length === 0 ? (
-              <Card className="bg-white/95 backdrop-blur-sm p-8 rounded-2xl shadow-medium border-0 text-center">
-                <p className="text-slate-600">Aucune preuve trouvée</p>
+              <Card className="bg-white/95 backdrop-blur-sm p-8 rounded-2xl shadow-medium border-0">
+                <div className="text-center space-y-4">
+                  <div className="w-16 h-16 bg-info/10 rounded-full flex items-center justify-center mx-auto">
+                    <FileText className="w-8 h-8 text-info" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-800 mb-2">
+                      Aucune preuve trouvée
+                    </h3>
+                    <p className="text-sm text-slate-600 mb-4 max-w-md mx-auto">
+                      Les preuves de paiement apparaîtront ici une fois que les utilisateurs les auront uploadées depuis leur historique de transferts.
+                    </p>
+                    <div className="bg-slate-50 rounded-xl p-4 max-w-md mx-auto text-left">
+                      <p className="text-xs font-semibold text-slate-700 mb-2">📝 Comment les utilisateurs uploadent-ils les preuves ?</p>
+                      <ol className="text-xs text-slate-600 space-y-1 list-decimal list-inside">
+                        <li>Accéder à <span className="font-medium">Historique</span></li>
+                        <li>Sélectionner un transfert</li>
+                        <li>Cliquer sur <span className="font-medium">"Ajouter une preuve"</span></li>
+                        <li>Télécharger la capture d'écran du paiement</li>
+                      </ol>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-4">
+                      Note: Seuls les transferts en attente ou approuvés peuvent recevoir des preuves
+                    </p>
+                  </div>
+                </div>
               </Card>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
