@@ -152,7 +152,7 @@ const ModernDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 pb-24 md:pb-6">
-      <div className="container mx-auto px-4 py-6 max-w-6xl">
+      <div className="container mx-auto px-4 py-6 max-w-6xl overflow-x-hidden">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="text-slate-800">
@@ -188,31 +188,19 @@ const ModernDashboard = () => {
             </div>
           </div>
           
-          <div className="flex gap-3">
-            <Button 
-              asChild
-              className="flex-1 bg-white text-primary hover:bg-white/90 rounded-2xl px-6 font-medium shadow-medium"
-            >
-              <Link to="/transfer">
-                <PlusCircle className="w-5 h-5 mr-2" />
-                Nouveau transfert
-              </Link>
-            </Button>
-            <Button 
-              asChild
-              variant="outline"
-              className="flex-1 bg-white/10 border-white/20 text-white hover:bg-white/20 rounded-2xl px-6 font-medium"
-            >
-              <Link to="/history">
-                <History className="w-5 h-5 mr-2" />
-                Historique
-              </Link>
-            </Button>
-          </div>
+          <Button 
+            asChild
+            className="w-full bg-white text-primary hover:bg-white/90 rounded-2xl px-6 font-medium shadow-medium"
+          >
+            <Link to="/transfer">
+              <PlusCircle className="w-5 h-5 mr-2" />
+              Nouveau transfert
+            </Link>
+          </Button>
         </Card>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <Card className="bg-white/90 backdrop-blur-sm p-4 rounded-2xl shadow-medium border-0">
             <CardHeader className="p-0 pb-2">
               <div className="flex items-center justify-between">

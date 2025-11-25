@@ -201,36 +201,50 @@ const UnifiedAdmin = () => {
       const { data: transfersData, error } = await supabase
         .from('transfers')
         .select('*')
-        .not('proof_image_url', 'is', null)
+        .neq('proof_image_url', null)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-
-      if (transfersData) {
-        const userIds = [...new Set(transfersData.map(t => t.user_id))];
-        const { data: profilesData } = await supabase
-          .from('profiles')
-          .select('user_id, first_name, last_name, email, phone, country')
-          .in('user_id', userIds);
-
-        const recipientIds = [...new Set(transfersData.map(t => t.recipient_id).filter(Boolean))];
-        let recipients: any[] = [];
-        if (recipientIds.length > 0) {
-          const { data: recipientsData } = await supabase
-            .from('recipients')
-            .select('id, name, phone, country, bank_account, wave_number')
-            .in('id', recipientIds);
-          recipients = recipientsData || [];
-        }
-
-        const transfersWithProfiles = transfersData.map(transfer => ({
-          ...transfer,
-          profiles: profilesData?.find(p => p.user_id === transfer.user_id) || null,
-          recipients: recipients?.find(r => r.id === transfer.recipient_id) || undefined
-        }));
-
-        setProofsTransfers(transfersWithProfiles);
+      if (error) {
+        console.error('Error fetching proofs:', error);
+        throw error;
       }
+
+      if (!transfersData || transfersData.length === 0) {
+        setProofsTransfers([]);
+        return;
+      }
+
+      const userIds = [...new Set(transfersData.map(t => t.user_id))];
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, first_name, last_name, email, phone, country')
+        .in('user_id', userIds);
+
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+      }
+
+      const recipientIds = [...new Set(transfersData.map(t => t.recipient_id).filter(Boolean))];
+      let recipients: any[] = [];
+      if (recipientIds.length > 0) {
+        const { data: recipientsData, error: recipientsError } = await supabase
+          .from('recipients')
+          .select('id, name, phone, country, bank_account, wave_number')
+          .in('id', recipientIds);
+        
+        if (recipientsError) {
+          console.error('Error fetching recipients:', recipientsError);
+        }
+        recipients = recipientsData || [];
+      }
+
+      const transfersWithProfiles = transfersData.map(transfer => ({
+        ...transfer,
+        profiles: profilesData?.find(p => p.user_id === transfer.user_id) || null,
+        recipients: recipients?.find(r => r.id === transfer.recipient_id) || undefined
+      }));
+
+      setProofsTransfers(transfersWithProfiles);
     } catch (error) {
       console.error('Error loading proofs:', error);
       toast({
