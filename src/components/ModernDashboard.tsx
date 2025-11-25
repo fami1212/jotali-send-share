@@ -180,7 +180,7 @@ const ModernDashboard = () => {
               </div>
               <div>
                 <p className="text-sm text-white/80 mb-1">Montant moyen par transfert</p>
-                <h2 className="text-4xl font-bold text-white">
+                <h2 className="text-2xl md:text-4xl font-bold text-white">
                   {formatCurrency(stats.avgTransferAmount)}
                 </h2>
                 <p className="text-xs text-white/70 mt-1">Basé sur {stats.totalTransactions} transferts</p>
@@ -209,7 +209,7 @@ const ModernDashboard = () => {
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="text-2xl font-bold text-slate-800">{formatCurrency(stats.totalSent)}</div>
+              <div className="text-xl md:text-2xl font-bold text-slate-800">{formatCurrency(stats.totalSent)}</div>
               <p className="text-xs text-slate-500 mt-1">{stats.totalTransactions} transactions</p>
             </CardContent>
           </Card>
@@ -222,7 +222,7 @@ const ModernDashboard = () => {
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="text-2xl font-bold text-slate-800">{formatCurrency(stats.totalReceived)}</div>
+              <div className="text-xl md:text-2xl font-bold text-slate-800">{formatCurrency(stats.totalReceived)}</div>
               <p className="text-xs text-slate-500 mt-1">{stats.completedTransfers} terminés</p>
             </CardContent>
           </Card>
@@ -235,7 +235,7 @@ const ModernDashboard = () => {
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="text-2xl font-bold text-slate-800">{stats.pendingTransfers}</div>
+              <div className="text-xl md:text-2xl font-bold text-slate-800">{stats.pendingTransfers}</div>
               <p className="text-xs text-slate-500 mt-1">À traiter</p>
             </CardContent>
           </Card>
@@ -248,7 +248,7 @@ const ModernDashboard = () => {
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="text-2xl font-bold text-slate-800">{stats.thisMonthTransfers}</div>
+              <div className="text-xl md:text-2xl font-bold text-slate-800">{stats.thisMonthTransfers}</div>
               <p className="text-xs text-slate-500 mt-1">Transactions</p>
             </CardContent>
           </Card>
@@ -291,7 +291,7 @@ const ModernDashboard = () => {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-semibold text-slate-800">
+                        <p className="text-xs md:text-sm font-semibold text-slate-800">
                           {formatCurrency(Number(transfer.amount))}
                         </p>
                         <Badge 
@@ -386,7 +386,7 @@ const ModernDashboard = () => {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-white/90">Épargne</p>
-                    <p className="text-2xl font-bold text-white">12.000 F</p>
+                    <p className="text-xl md:text-2xl font-bold text-white">12.000 F</p>
                   </div>
                 </div>
                 <Button 
