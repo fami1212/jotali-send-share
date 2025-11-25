@@ -70,29 +70,24 @@ const BottomNavigation = () => {
           <Link
             key={item.path}
             to={item.path}
-            className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl transition-all duration-300 relative ${
+            className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl transition-colors duration-200 ${
               item.active 
-                ? 'text-primary scale-105' 
-                : 'text-muted-foreground hover:text-foreground hover:scale-105'
+                ? 'text-primary' 
+                : 'text-muted-foreground'
             }`}
           >
-            {item.active && (
-              <div className="absolute inset-0 bg-gradient-primary opacity-10 rounded-xl animate-pulse" />
-            )}
-            <div className={`relative ${item.active ? 'transform -translate-y-0.5' : ''}`}>
-              <item.icon 
-                className={`w-5 h-5 mb-1 transition-all duration-300 ${
-                  item.active ? 'text-primary stroke-[2.5]' : 'stroke-[2]'
-                }`} 
-              />
-            </div>
-            <span className={`text-[10px] font-semibold leading-tight relative ${
+            <item.icon 
+              className={`w-5 h-5 mb-1 ${
+                item.active ? 'text-primary stroke-[2.5]' : 'stroke-[2]'
+              }`} 
+            />
+            <span className={`text-[10px] font-semibold leading-tight ${
               item.active ? 'text-primary' : ''
             }`}>
               {item.label}
             </span>
             {item.active && (
-              <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-8 h-1 bg-gradient-primary rounded-full" />
+              <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-8 h-1 bg-primary rounded-full" />
             )}
           </Link>
         ))}
