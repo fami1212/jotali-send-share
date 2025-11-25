@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Upload, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -26,6 +26,7 @@ const UploadProof = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [selectedTransfer, setSelectedTransfer] = useState('');
   const [proofImage, setProofImage] = useState<File | null>(null);
@@ -34,6 +35,21 @@ const UploadProof = () => {
   useEffect(() => {
     loadTransfers();
   }, []);
+
+  // Auto-select transfer from URL parameter
+  useEffect(() => {
+    const transferId = searchParams.get('transfer');
+    if (transferId && transfers.length > 0) {
+      const transfer = transfers.find(t => t.id === transferId);
+      if (transfer) {
+        setSelectedTransfer(transferId);
+        toast({
+          title: "Transfert sélectionné",
+          description: `${transfer.reference_number} - ${transfer.amount} ${transfer.from_currency}`,
+        });
+      }
+    }
+  }, [searchParams, transfers]);
 
   const loadTransfers = async () => {
     try {
