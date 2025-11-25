@@ -64,20 +64,20 @@ const BottomNavigation = () => {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-border/20 z-50 md:hidden shadow-strong">
-      <div className="flex items-center justify-around py-2 px-4 safe-area-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 bg-background/98 backdrop-blur-md border-t border-border/40 z-50 md:hidden shadow-strong">
+      <div className="grid grid-cols-6 gap-0.5 px-1 py-1.5 safe-area-bottom">
         {navItems.map((item) => (
           <Link
             key={item.path}
             to={item.path}
-            className={`flex flex-col items-center justify-center py-2 px-3 rounded-xl transition-all duration-200 min-w-0 flex-1 ${
+            className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-lg transition-all duration-200 ${
               item.active 
-                ? 'text-primary bg-primary/10 shadow-glow' 
-                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                ? 'text-primary bg-primary/10' 
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
             }`}
           >
-            <item.icon className={`w-5 h-5 mb-1 ${item.active ? 'text-primary' : ''}`} />
-            <span className={`text-xs font-medium truncate ${item.active ? 'text-primary' : ''}`}>
+            <item.icon className={`w-[18px] h-[18px] mb-0.5 ${item.active ? 'text-primary' : ''}`} />
+            <span className={`text-[10px] font-medium leading-tight ${item.active ? 'text-primary' : ''}`}>
               {item.label}
             </span>
           </Link>
@@ -86,8 +86,8 @@ const BottomNavigation = () => {
       
       {/* Admin indicator */}
       {isAdmin && (
-        <div className="absolute -top-2 right-4">
-          <div className="bg-gradient-primary text-white text-xs px-2 py-1 rounded-full shadow-medium">
+        <div className="absolute -top-2 right-2">
+          <div className="bg-gradient-primary text-white text-[10px] px-2 py-0.5 rounded-full shadow-medium">
             Admin
           </div>
         </div>
