@@ -213,9 +213,20 @@ const UnifiedAdmin = () => {
           .select('user_id, first_name, last_name, email, phone, country')
           .in('user_id', userIds);
 
+        const recipientIds = [...new Set(transfersData.map(t => t.recipient_id).filter(Boolean))];
+        let recipients: any[] = [];
+        if (recipientIds.length > 0) {
+          const { data: recipientsData } = await supabase
+            .from('recipients')
+            .select('id, name, phone, country, bank_account, wave_number')
+            .in('id', recipientIds);
+          recipients = recipientsData || [];
+        }
+
         const transfersWithProfiles = transfersData.map(transfer => ({
           ...transfer,
-          profiles: profilesData?.find(p => p.user_id === transfer.user_id) || null
+          profiles: profilesData?.find(p => p.user_id === transfer.user_id) || null,
+          recipients: recipients?.find(r => r.id === transfer.recipient_id) || undefined
         }));
 
         setProofsTransfers(transfersWithProfiles);
@@ -759,13 +770,47 @@ const UnifiedAdmin = () => {
           </TabsContent>
 
           {/* Stats Tab */}
-          <TabsContent value="stats">
-            <Card className="bg-white/95 backdrop-blur-sm p-6 rounded-2xl shadow-medium border-0">
-              <h3 className="text-lg font-semibold text-slate-800 mb-4">Statistiques détaillées</h3>
-              <div className="text-slate-600">
-                <p>Statistiques en cours de développement...</p>
-              </div>
-            </Card>
+          <TabsContent value="stats" className="space-y-6">
+            {/* Admin Stats */}
+            <AdminStats stats={{
+              total: transfers.length,
+              pending: transfers.filter(t => t.status === 'pending').length,
+              awaiting_admin: transfers.filter(t => t.status === 'awaiting_admin').length,
+              approved: transfers.filter(t => t.status === 'approved').length,
+              completed: transfers.filter(t => t.status === 'completed').length,
+              rejected: transfers.filter(t => t.status === 'rejected').length,
+              cancelled: transfers.filter(t => t.status === 'cancelled').length,
+              totalAmount: {
+                MAD: transfers.filter(t => t.from_currency === 'MAD').reduce((sum, t) => sum + Number(t.amount), 0),
+                CFA: transfers.filter(t => t.from_currency === 'CFA').reduce((sum, t) => sum + Number(t.amount), 0),
+              },
+              avgProcessingTime: 2.5,
+              urgentTransfers: transfers.filter(t => {
+                const now = new Date();
+                const transferDate = new Date(t.created_at);
+                const diffHours = (now.getTime() - transferDate.getTime()) / (1000 * 60 * 60);
+                return t.status === 'pending' && diffHours > 24;
+              }).length,
+              todayTransfers: transfers.filter(t => {
+                const today = new Date();
+                const transferDate = new Date(t.created_at);
+                return transferDate.toDateString() === today.toDateString();
+              }).length,
+              weekTransfers: transfers.filter(t => {
+                const now = new Date();
+                const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                const transferDate = new Date(t.created_at);
+                return transferDate >= weekAgo;
+              }).length,
+              monthTransfers: transfers.filter(t => {
+                const now = new Date();
+                const transferDate = new Date(t.created_at);
+                return transferDate.getMonth() === now.getMonth() && transferDate.getFullYear() === now.getFullYear();
+              }).length,
+            }} />
+            
+            {/* Admin Charts */}
+            <AdminCharts transfers={transfers} />
           </TabsContent>
 
           {/* Rates Tab */}
