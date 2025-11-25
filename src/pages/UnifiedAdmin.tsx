@@ -19,6 +19,8 @@ import AdminStats from '@/components/admin/AdminStats';
 import AdminFilters from '@/components/admin/AdminFilters';
 import ExchangeRateManager from '@/components/admin/ExchangeRateManager';
 import AdminCharts from '@/components/admin/AdminCharts';
+import { ProofStatistics } from '@/components/ProofStatistics';
+import { ProofComments } from '@/components/ProofComments';
 import { format } from 'date-fns';
 
 interface Transfer {
@@ -809,46 +811,51 @@ const UnifiedAdmin = () => {
 
           {/* Stats Tab */}
           <TabsContent value="stats" className="space-y-6">
-            {/* Admin Stats */}
-            <AdminStats stats={{
-              total: transfers.length,
-              pending: transfers.filter(t => t.status === 'pending').length,
-              awaiting_admin: transfers.filter(t => t.status === 'awaiting_admin').length,
-              approved: transfers.filter(t => t.status === 'approved').length,
-              completed: transfers.filter(t => t.status === 'completed').length,
-              rejected: transfers.filter(t => t.status === 'rejected').length,
-              cancelled: transfers.filter(t => t.status === 'cancelled').length,
-              totalAmount: {
-                MAD: transfers.filter(t => t.from_currency === 'MAD').reduce((sum, t) => sum + Number(t.amount), 0),
-                CFA: transfers.filter(t => t.from_currency === 'CFA').reduce((sum, t) => sum + Number(t.amount), 0),
-              },
-              avgProcessingTime: 2.5,
-              urgentTransfers: transfers.filter(t => {
-                const now = new Date();
-                const transferDate = new Date(t.created_at);
-                const diffHours = (now.getTime() - transferDate.getTime()) / (1000 * 60 * 60);
-                return t.status === 'pending' && diffHours > 24;
-              }).length,
-              todayTransfers: transfers.filter(t => {
-                const today = new Date();
-                const transferDate = new Date(t.created_at);
-                return transferDate.toDateString() === today.toDateString();
-              }).length,
-              weekTransfers: transfers.filter(t => {
-                const now = new Date();
-                const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-                const transferDate = new Date(t.created_at);
-                return transferDate >= weekAgo;
-              }).length,
-              monthTransfers: transfers.filter(t => {
-                const now = new Date();
-                const transferDate = new Date(t.created_at);
-                return transferDate.getMonth() === now.getMonth() && transferDate.getFullYear() === now.getFullYear();
-              }).length,
-            }} />
+            <ProofStatistics />
             
-            {/* Admin Charts */}
-            <AdminCharts transfers={transfers} />
+            <div className="mt-8">
+              <h2 className="text-xl font-semibold mb-4">Statistiques Générales</h2>
+              <AdminStats stats={{
+                total: transfers.length,
+                pending: transfers.filter(t => t.status === 'pending').length,
+                awaiting_admin: transfers.filter(t => t.status === 'awaiting_admin').length,
+                approved: transfers.filter(t => t.status === 'approved').length,
+                completed: transfers.filter(t => t.status === 'completed').length,
+                rejected: transfers.filter(t => t.status === 'rejected').length,
+                cancelled: transfers.filter(t => t.status === 'cancelled').length,
+                totalAmount: {
+                  MAD: transfers.filter(t => t.from_currency === 'MAD').reduce((sum, t) => sum + Number(t.amount), 0),
+                  CFA: transfers.filter(t => t.from_currency === 'CFA').reduce((sum, t) => sum + Number(t.amount), 0),
+                },
+                avgProcessingTime: 2.5,
+                urgentTransfers: transfers.filter(t => {
+                  const now = new Date();
+                  const transferDate = new Date(t.created_at);
+                  const diffHours = (now.getTime() - transferDate.getTime()) / (1000 * 60 * 60);
+                  return t.status === 'pending' && diffHours > 24;
+                }).length,
+                todayTransfers: transfers.filter(t => {
+                  const today = new Date();
+                  const transferDate = new Date(t.created_at);
+                  return transferDate.toDateString() === today.toDateString();
+                }).length,
+                weekTransfers: transfers.filter(t => {
+                  const now = new Date();
+                  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                  const transferDate = new Date(t.created_at);
+                  return transferDate >= weekAgo;
+                }).length,
+                monthTransfers: transfers.filter(t => {
+                  const now = new Date();
+                  const transferDate = new Date(t.created_at);
+                  return transferDate.getMonth() === now.getMonth() && transferDate.getFullYear() === now.getFullYear();
+                }).length,
+              }} />
+              
+              <div className="mt-6">
+                <AdminCharts transfers={transfers} />
+              </div>
+            </div>
           </TabsContent>
 
           {/* Rates Tab */}
@@ -930,43 +937,51 @@ const UnifiedAdmin = () => {
 
       {/* Proof Validation Dialog */}
       <Dialog open={validationDialogOpen} onOpenChange={setValidationDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {validationType === 'verify' ? 'Vérifier la preuve' : 'Marquer comme invalide'}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-6">
             <p className="text-sm text-slate-600">
               Transfert: <span className="font-medium text-slate-800">{selectedTransfer?.reference_number}</span>
             </p>
-            <div>
-              <label className="text-sm font-medium mb-2 block">
-                Commentaire {validationType === 'invalid' && '(requis)'}
-              </label>
-              <Textarea
-                value={proofComment}
-                onChange={(e) => setProofComment(e.target.value)}
-                placeholder="Ajouter un commentaire..."
-                className="rounded-xl"
-                rows={3}
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button
-                onClick={() => setValidationDialogOpen(false)}
-                variant="outline"
-                className="flex-1 rounded-xl"
-              >
-                Annuler
-              </Button>
-              <Button
-                onClick={() => selectedTransfer && validateProof(selectedTransfer, validationType === 'verify')}
-                className={`flex-1 rounded-xl ${validationType === 'verify' ? 'bg-success hover:bg-success/90' : 'bg-destructive hover:bg-destructive/90'}`}
-                disabled={validationType === 'invalid' && !proofComment.trim()}
-              >
-                {validationType === 'verify' ? 'Vérifier' : 'Marquer invalide'}
-              </Button>
+            
+            {/* Section Commentaires */}
+            {selectedTransfer && (
+              <ProofComments transferId={selectedTransfer.id} isAdmin={true} />
+            )}
+            
+            <div className="border-t pt-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">
+                  Commentaire de validation {validationType === 'invalid' && '(requis)'}
+                </label>
+                <Textarea
+                  value={proofComment}
+                  onChange={(e) => setProofComment(e.target.value)}
+                  placeholder="Ajouter un commentaire de validation..."
+                  className="rounded-xl"
+                  rows={3}
+                />
+              </div>
+              <div className="flex gap-2 mt-4">
+                <Button
+                  onClick={() => setValidationDialogOpen(false)}
+                  variant="outline"
+                  className="flex-1 rounded-xl"
+                >
+                  Annuler
+                </Button>
+                <Button
+                  onClick={() => selectedTransfer && validateProof(selectedTransfer, validationType === 'verify')}
+                  className={`flex-1 rounded-xl ${validationType === 'verify' ? 'bg-success hover:bg-success/90' : 'bg-destructive hover:bg-destructive/90'}`}
+                  disabled={validationType === 'invalid' && !proofComment.trim()}
+                >
+                  {validationType === 'verify' ? 'Vérifier' : 'Marquer invalide'}
+                </Button>
+              </div>
             </div>
           </div>
         </DialogContent>

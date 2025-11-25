@@ -178,6 +178,44 @@ export type Database = {
         }
         Relationships: []
       }
+      proof_comments: {
+        Row: {
+          comment: string
+          created_at: string
+          id: string
+          is_admin: boolean
+          transfer_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          comment: string
+          created_at?: string
+          id?: string
+          is_admin?: boolean
+          transfer_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          comment?: string
+          created_at?: string
+          id?: string
+          is_admin?: boolean
+          transfer_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proof_comments_transfer_id_fkey"
+            columns: ["transfer_id"]
+            isOneToOne: false
+            referencedRelation: "transfers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recipients: {
         Row: {
           bank_account: string | null
