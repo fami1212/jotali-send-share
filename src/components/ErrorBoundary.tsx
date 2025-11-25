@@ -2,6 +2,7 @@ import React, { Component, ErrorInfo, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle } from "lucide-react";
+import { Link } from "react-router-dom";
 
 interface Props {
   children: ReactNode;
@@ -46,15 +47,16 @@ export class ErrorBoundary extends Component<Props, State> {
                   {this.state.error.toString()}
                 </div>
               )}
-              <Button
-                onClick={() => {
-                  this.setState({ hasError: false, error: null });
-                  window.location.href = '/';
-                }}
-                className="w-full"
-              >
-                Retour à l'accueil
-              </Button>
+              <Link to="/dashboard">
+                <Button
+                  onClick={() => {
+                    this.setState({ hasError: false, error: null });
+                  }}
+                  className="w-full"
+                >
+                  Retour à l'accueil
+                </Button>
+              </Link>
             </CardContent>
           </Card>
         </div>
