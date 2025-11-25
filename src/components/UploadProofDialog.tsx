@@ -144,19 +144,28 @@ const UploadProofDialog = ({ open, onOpenChange, preselectedTransferId, onSucces
             <h3 className="text-sm font-semibold mb-3">Sélectionner un transfert</h3>
             
             <Select value={selectedTransfer} onValueChange={setSelectedTransfer}>
-              <SelectTrigger className="w-full h-11 rounded-lg">
-                <SelectValue placeholder="Choisir un transfert" />
+              <SelectTrigger className="w-full h-11 rounded-lg bg-background border-2 border-border">
+                <SelectValue placeholder="Choisir un transfert">
+                  {selectedTransferData && (
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-primary">{selectedTransferData.reference_number}</span>
+                      <span className="text-sm text-muted-foreground">
+                        • {selectedTransferData.amount} {selectedTransferData.from_currency}
+                      </span>
+                    </div>
+                  )}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {transfers.map((transfer) => (
                   <SelectItem key={transfer.id} value={transfer.id}>
-                    <div className="flex items-center justify-between w-full">
-                      <span>{transfer.reference_number}</span>
-                      <span className="ml-4 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-3 py-1">
+                      <span className="font-medium">{transfer.reference_number}</span>
+                      <span className="text-sm text-muted-foreground">
                         {transfer.amount} {transfer.from_currency}
                       </span>
                       {transfer.proof_image_url && (
-                        <CheckCircle className="w-4 h-4 text-green-600 ml-2" />
+                        <CheckCircle className="w-4 h-4 text-green-600" />
                       )}
                     </div>
                   </SelectItem>
@@ -165,28 +174,28 @@ const UploadProofDialog = ({ open, onOpenChange, preselectedTransferId, onSucces
             </Select>
 
             {selectedTransferData && (
-              <div className="mt-3 p-3 bg-background rounded-lg">
-                <div className="space-y-2 text-xs">
-                  <div className="flex justify-between">
+              <div className="mt-3 p-4 bg-primary/5 rounded-lg border-2 border-primary/20">
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Référence</span>
-                    <span className="font-medium">{selectedTransferData.reference_number}</span>
+                    <span className="font-semibold text-primary">{selectedTransferData.reference_number}</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Montant</span>
-                    <span className="font-medium">
+                    <span className="font-semibold">
                       {selectedTransferData.amount} {selectedTransferData.from_currency}
                     </span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Statut</span>
                     <span className="font-medium">
                       {selectedTransferData.status === 'pending' ? 'En attente' : 'Approuvé'}
                     </span>
                   </div>
                   {selectedTransferData.proof_image_url && (
-                    <div className="flex items-center justify-center pt-2 text-green-600">
+                    <div className="flex items-center justify-center pt-2 text-green-600 bg-green-50 rounded-md py-2 mt-2">
                       <CheckCircle className="w-4 h-4 mr-2" />
-                      <span className="text-xs">Preuve déjà ajoutée</span>
+                      <span className="text-xs font-medium">Preuve déjà ajoutée</span>
                     </div>
                   )}
                 </div>
