@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ArrowRightLeft, Search, Filter, Eye, X, Calendar as CalendarIcon, Download, FileSpreadsheet, FileText, ChevronLeft, ChevronRight, Upload } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -42,6 +43,7 @@ interface Transfer {
 
 const History = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [filteredTransfers, setFilteredTransfers] = useState<Transfer[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -699,18 +701,18 @@ const History = () => {
               <div className="flex gap-3">
                 <Button 
                   onClick={() => {
-                    setSelectedTransferIdForProof(selectedTransfer.id);
-                    setShowUploadProofDialog(true);
+                    navigate(`/upload-proof?transfer=${selectedTransfer.id}`);
+                    setSelectedTransfer(null);
                   }}
                   variant="outline"
-                  className="flex-1 border-2 border-primary/20 text-primary hover:bg-primary/5"
+                  className="flex-1 border-2 border-primary/20 text-primary hover:bg-primary/5 rounded-xl"
                 >
                   <Upload className="w-4 h-4 mr-2" />
                   Ajouter preuve
                 </Button>
                 <Button 
                   onClick={() => setSelectedTransfer(null)}
-                  className="flex-1 bg-gradient-primary hover:opacity-90 text-white"
+                  className="flex-1 bg-gradient-primary hover:opacity-90 text-white rounded-xl"
                 >
                   Fermer
                 </Button>
