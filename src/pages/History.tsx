@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowRightLeft, Search, Filter, Eye, X, Calendar as CalendarIcon, Download, FileSpreadsheet, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowRightLeft, Search, Filter, Eye, X, Calendar as CalendarIcon, Download, FileSpreadsheet, FileText, ChevronLeft, ChevronRight, Upload } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -15,7 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import Navbar from '@/components/Navbar';
 import BottomNavigation from '@/components/BottomNavigation';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { DateRange } from 'react-day-picker';
@@ -41,6 +41,7 @@ interface Transfer {
 
 const History = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [filteredTransfers, setFilteredTransfers] = useState<Transfer[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -693,12 +694,25 @@ const History = () => {
                 </div>
               </div>
               
-              <Button 
-                onClick={() => setSelectedTransfer(null)}
-                className="w-full bg-gradient-primary hover:opacity-90 text-white"
-              >
-                Fermer
-              </Button>
+              <div className="flex gap-3">
+                <Button 
+                  onClick={() => {
+                    navigate('/upload-proof', { state: { transferId: selectedTransfer.id } });
+                    setSelectedTransfer(null);
+                  }}
+                  variant="outline"
+                  className="flex-1 border-2 border-primary/20 text-primary hover:bg-primary/5"
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Ajouter preuve
+                </Button>
+                <Button 
+                  onClick={() => setSelectedTransfer(null)}
+                  className="flex-1 bg-gradient-primary hover:opacity-90 text-white"
+                >
+                  Fermer
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>
