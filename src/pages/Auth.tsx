@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { ArrowRightLeft, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
+import { ArrowRightLeft, Mail, Lock, User, Eye, EyeOff, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { z } from 'zod';
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -16,9 +17,28 @@ const Auth = () => {
   const [lastName, setLastName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState<'weak' | 'medium' | 'strong' | null>(null);
   
   const { user, signIn, signUp } = useAuth();
   const { toast } = useToast();
+
+  const checkPasswordStrength = (pwd: string) => {
+    if (pwd.length === 0) {
+      setPasswordStrength(null);
+      return;
+    }
+    const hasUpper = /[A-Z]/.test(pwd);
+    const hasLower = /[a-z]/.test(pwd);
+    const hasNumber = /[0-9]/.test(pwd);
+    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(pwd);
+    const isLongEnough = pwd.length >= 8;
+
+    const strength = [hasUpper, hasLower, hasNumber, hasSpecial, isLongEnough].filter(Boolean).length;
+    
+    if (strength <= 2) setPasswordStrength('weak');
+    else if (strength <= 3) setPasswordStrength('medium');
+    else setPasswordStrength('strong');
+  };
 
   // Redirect if already logged in
   if (user) {
@@ -27,35 +47,53 @@ const Auth = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Sanitize inputs
+    const sanitizedEmail = email.trim().toLowerCase();
+    const sanitizedFirstName = firstName.trim();
+    const sanitizedLastName = lastName.trim();
+
+    // Basic client-side validation
+    if (!sanitizedEmail || !password) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez remplir tous les champs requis",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!isLogin && (!sanitizedFirstName || !sanitizedLastName)) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez remplir tous les champs",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
       if (isLogin) {
-        const { error } = await signIn(email, password);
+        const { error } = await signIn(sanitizedEmail, password);
         if (error) {
+          const errorMessage = error.message === "Invalid login credentials" 
+            ? "Email ou mot de passe incorrect" 
+            : error.message || "Erreur de connexion";
+          
           toast({
             title: "Erreur de connexion",
-            description: error.message === "Invalid login credentials" ? 
-              "Email ou mot de passe incorrect" : error.message,
+            description: errorMessage,
             variant: "destructive",
           });
         }
       } else {
-        if (!firstName || !lastName) {
-          toast({
-            title: "Erreur",
-            description: "Veuillez remplir tous les champs",
-            variant: "destructive",
-          });
-          setIsLoading(false);
-          return;
-        }
-        
-        const { error } = await signUp(email, password, firstName, lastName);
+        const { error } = await signUp(sanitizedEmail, password, sanitizedFirstName, sanitizedLastName);
         if (error) {
           toast({
             title: "Erreur d'inscription",
-            description: error.message,
+            description: error.message || "Impossible de créer le compte",
             variant: "destructive",
           });
         } else {
@@ -63,6 +101,12 @@ const Auth = () => {
             title: "Inscription réussie",
             description: "Vérifiez votre email pour confirmer votre compte",
           });
+          // Reset form
+          setEmail('');
+          setPassword('');
+          setFirstName('');
+          setLastName('');
+          setPasswordStrength(null);
         }
       }
     } catch (error) {
@@ -71,9 +115,9 @@ const Auth = () => {
         description: "Une erreur inattendue s'est produite",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   return (
@@ -94,6 +138,12 @@ const Auth = () => {
 
         {/* Auth Form */}
         <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-strong p-8">
+          {!isLogin && (
+            <div className="flex items-center gap-2 p-3 bg-info/10 rounded-lg mb-4 text-sm text-info-foreground">
+              <Shield className="w-4 h-4" />
+              <p>Toutes vos données sont cryptées et protégées</p>
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-6">
             {!isLogin && (
               <div className="grid grid-cols-2 gap-4">
@@ -154,10 +204,15 @@ const Auth = () => {
                   id="password"
                   type={showPassword ? "text" : "password"}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (!isLogin) checkPasswordStrength(e.target.value);
+                  }}
                   className="pl-10 pr-10"
                   placeholder="••••••••"
                   required
+                  minLength={8}
+                  maxLength={72}
                 />
                 <button
                   type="button"
@@ -167,6 +222,32 @@ const Auth = () => {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              {!isLogin && passwordStrength && (
+                <div className="flex items-center gap-2 mt-2">
+                  <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full transition-all ${
+                        passwordStrength === 'weak' ? 'bg-destructive w-1/3' :
+                        passwordStrength === 'medium' ? 'bg-warning w-2/3' :
+                        'bg-success w-full'
+                      }`}
+                    />
+                  </div>
+                  <span className={`text-xs ${
+                    passwordStrength === 'weak' ? 'text-destructive' :
+                    passwordStrength === 'medium' ? 'text-warning' :
+                    'text-success'
+                  }`}>
+                    {passwordStrength === 'weak' ? 'Faible' :
+                     passwordStrength === 'medium' ? 'Moyen' : 'Fort'}
+                  </span>
+                </div>
+              )}
+              {!isLogin && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule et un chiffre
+                </p>
+              )}
             </div>
 
             <Button 
