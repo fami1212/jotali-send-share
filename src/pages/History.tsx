@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowRightLeft, Search, Filter, Eye, X, Calendar as CalendarIcon, Download, FileSpreadsheet, FileText, ChevronLeft, ChevronRight, Upload } from 'lucide-react';
+import { ArrowRightLeft, Search, Filter, Eye, X, Calendar as CalendarIcon, Download, FileSpreadsheet, FileText, ChevronLeft, ChevronRight, Upload, MessageSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -17,10 +17,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import Navbar from '@/components/Navbar';
 import BottomNavigation from '@/components/BottomNavigation';
 import UploadProofDialog from '@/components/UploadProofDialog';
+import { ProofComments } from '@/components/ProofComments';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { DateRange } from 'react-day-picker';
+import { handleApiError } from '@/utils/apiErrorHandler';
 
 interface Transfer {
   id: string;
@@ -90,6 +92,7 @@ const History = () => {
 
       if (error) {
         console.error('Supabase error:', error);
+        handleApiError(error, 'loadTransfers');
         throw error;
       }
 
@@ -99,6 +102,7 @@ const History = () => {
       }
     } catch (error) {
       console.error('Error loading transfers:', error);
+      handleApiError(error, 'loadTransfers');
     } finally {
       setLoading(false);
     }
@@ -616,7 +620,7 @@ const History = () => {
       
       {/* Transfer Details Dialog */}
       <Dialog open={!!selectedTransfer} onOpenChange={() => setSelectedTransfer(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-slate-800">
               Détails du transfert
@@ -624,7 +628,7 @@ const History = () => {
           </DialogHeader>
           
           {selectedTransfer && (
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div className="bg-slate-50 rounded-xl p-4 space-y-3">
                 <div className="flex justify-between items-start">
                   <span className="text-sm text-slate-600">Référence</span>
@@ -696,6 +700,11 @@ const History = () => {
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* Section Commentaires */}
+              <div className="border-t pt-4">
+                <ProofComments transferId={selectedTransfer.id} isAdmin={false} />
               </div>
               
               <div className="flex gap-3">
