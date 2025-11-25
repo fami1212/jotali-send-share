@@ -42,6 +42,7 @@ const Navbar = () => {
     { name: 'Tableau de bord', href: '/dashboard' },
     { name: 'Nouveau transfert', href: '/transfer' },
     { name: 'Historique', href: '/history' },
+    { name: 'Preuves', href: '/upload-proof' },
     { name: 'Bénéficiaires', href: '/recipients' },
   ];
 
