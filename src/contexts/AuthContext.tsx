@@ -22,15 +22,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useRealtimeNotifications(user?.id);
 
   useEffect(() => {
-    // Écouter les changements d'authentification
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Récupérer la session actuelle
+    supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
-    // Récupérer la session initiale
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Écouter les changements
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -41,22 +41,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string, firstName: string, lastName: string) => {
     try {
-      // Validation basique côté client
-      if (!email || !email.includes('@')) {
-        return { error: { message: 'Email invalide' } };
-      }
-      
-      if (!password || password.length < 8) {
-        return { error: { message: 'Le mot de passe doit contenir au moins 8 caractères' } };
-      }
-
-      if (!firstName || !lastName) {
-        return { error: { message: 'Prénom et nom requis' } };
-      }
-
       const { data, error } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
-        password,
+        password: password,
         options: {
           emailRedirectTo: `${window.location.origin}/`,
           data: {
@@ -66,61 +53,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
       });
 
-      if (error) {
-        console.error('Erreur signUp:', error);
-        
-        // Messages d'erreur en français
-        if (error.message.includes('already registered')) {
-          return { error: { message: 'Cet email est déjà utilisé' } };
-        }
-        
-        return { error: { message: error.message || 'Erreur lors de l\'inscription' } };
-      }
-
+      if (error) throw error;
       return { data, error: null };
-    } catch (err: any) {
-      console.error('Exception signUp:', err);
-      return { error: { message: 'Erreur inattendue lors de l\'inscription' } };
+    } catch (error: any) {
+      return { error: { message: error.message || 'Erreur inscription' } };
     }
   };
 
   const signIn = async (email: string, password: string) => {
     try {
-      if (!email || !password) {
-        return { error: { message: 'Email et mot de passe requis' } };
-      }
-
       const { error } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
-        password,
+        password: password,
       });
 
-      if (error) {
-        console.error('Erreur signIn:', error);
-        
-        // Messages d'erreur en français
-        if (error.message.includes('Invalid login credentials')) {
-          return { error: { message: 'Email ou mot de passe incorrect' } };
-        }
-        
-        return { error: { message: error.message || 'Erreur lors de la connexion' } };
-      }
-
+      if (error) throw error;
       return { error: null };
-    } catch (err: any) {
-      console.error('Exception signIn:', err);
-      return { error: { message: 'Erreur inattendue lors de la connexion' } };
+    } catch (error: any) {
+      return { error: { message: error.message || 'Erreur connexion' } };
     }
   };
 
   const signOut = async () => {
-    try {
-      await supabase.auth.signOut();
-      setUser(null);
-      setSession(null);
-    } catch (err) {
-      console.error('Erreur signOut:', err);
-    }
+    await supabase.auth.signOut();
   };
 
   return (

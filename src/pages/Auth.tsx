@@ -15,54 +15,31 @@ const Auth = () => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const { user, signIn, signUp } = useAuth();
   const { toast } = useToast();
 
-  // Rediriger si déjà connecté
-  if (user) {
-    return <Navigate to="/dashboard" replace />;
-  }
+  if (user) return <Navigate to="/dashboard" replace />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setLoading(true);
 
     try {
       if (isLogin) {
-        // Connexion
         const { error } = await signIn(email, password);
-        
         if (error) {
-          toast({
-            title: 'Connexion échouée',
-            description: error.message,
-            variant: 'destructive',
-          });
+          toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
         } else {
-          toast({
-            title: 'Connexion réussie',
-            description: 'Bienvenue !',
-          });
+          toast({ title: 'Connexion réussie' });
         }
       } else {
-        // Inscription
         const { error, data } = await signUp(email, password, firstName, lastName);
-        
         if (error) {
-          toast({
-            title: 'Inscription échouée',
-            description: error.message,
-            variant: 'destructive',
-          });
+          toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
         } else if (data?.user) {
-          toast({
-            title: 'Compte créé avec succès',
-            description: 'Vous pouvez maintenant vous connecter',
-          });
-          
-          // Réinitialiser le formulaire et basculer vers la connexion
+          toast({ title: 'Compte créé !', description: 'Vous pouvez maintenant vous connecter' });
           setEmail('');
           setPassword('');
           setFirstName('');
@@ -70,15 +47,8 @@ const Auth = () => {
           setTimeout(() => setIsLogin(true), 1500);
         }
       }
-    } catch (err: any) {
-      console.error('Erreur handleSubmit:', err);
-      toast({
-        title: 'Erreur',
-        description: 'Une erreur inattendue est survenue',
-        variant: 'destructive',
-      });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
@@ -115,7 +85,7 @@ const Auth = () => {
                       className="pl-10"
                       placeholder="Prénom"
                       required
-                      disabled={isLoading}
+                      disabled={loading}
                     />
                   </div>
                 </div>
@@ -131,7 +101,7 @@ const Auth = () => {
                       className="pl-10"
                       placeholder="Nom"
                       required
-                      disabled={isLoading}
+                      disabled={loading}
                     />
                   </div>
                 </div>
@@ -151,7 +121,7 @@ const Auth = () => {
                   className="pl-10"
                   placeholder="votre@email.com"
                   required
-                  disabled={isLoading}
+                  disabled={loading}
                 />
               </div>
             </div>
@@ -170,13 +140,13 @@ const Auth = () => {
                   placeholder="••••••••"
                   required
                   minLength={8}
-                  disabled={isLoading}
+                  disabled={loading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  disabled={isLoading}
+                  disabled={loading}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -193,9 +163,9 @@ const Auth = () => {
               type="submit"
               className="w-full bg-gradient-primary hover:opacity-90"
               size="lg"
-              disabled={isLoading}
+              disabled={loading}
             >
-              {isLoading ? 'Chargement...' : isLogin ? 'Se connecter' : 'Créer un compte'}
+              {loading ? 'Chargement...' : isLogin ? 'Se connecter' : 'Créer un compte'}
             </Button>
 
             {/* Basculer entre connexion et inscription */}
@@ -210,7 +180,7 @@ const Auth = () => {
                   setLastName('');
                 }}
                 className="text-primary hover:underline text-sm"
-                disabled={isLoading}
+                disabled={loading}
               >
                 {isLogin ? "Pas encore de compte ? S'inscrire" : 'Déjà un compte ? Se connecter'}
               </button>
