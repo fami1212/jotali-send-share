@@ -37,6 +37,9 @@ interface Transfer {
   transfer_method: string;
   created_at: string;
   completed_at?: string;
+  proof_verified?: boolean | null;
+  proof_image_url?: string | null;
+  proof_admin_comment?: string | null;
   recipients?: {
     name: string;
     phone: string;
@@ -701,6 +704,53 @@ const History = () => {
                   )}
                 </div>
               </div>
+
+              {/* État de la preuve */}
+              {selectedTransfer.proof_image_url && (
+                <div className="border-t border-slate-200 pt-4">
+                  <h3 className="text-lg font-semibold text-slate-800 mb-3">État de la preuve</h3>
+                  <div className="bg-slate-50 rounded-xl p-4 space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-slate-600">Statut de vérification</span>
+                      {selectedTransfer.proof_verified === true ? (
+                        <Badge className="bg-success/10 text-success border-success/20">
+                          ✓ Preuve vérifiée
+                        </Badge>
+                      ) : selectedTransfer.proof_verified === false ? (
+                        <Badge className="bg-destructive/10 text-destructive border-destructive/20">
+                          ✗ Preuve rejetée
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-warning/10 text-warning border-warning/20">
+                          ⏳ En attente de vérification
+                        </Badge>
+                      )}
+                    </div>
+                    
+                    {selectedTransfer.proof_admin_comment && (
+                      <div className="border-t border-slate-200 pt-3">
+                        <span className="text-sm font-medium text-slate-700 block mb-2">
+                          Commentaire admin
+                        </span>
+                        <p className="text-sm text-slate-600 bg-white rounded-lg p-3 border border-slate-200">
+                          {selectedTransfer.proof_admin_comment}
+                        </p>
+                      </div>
+                    )}
+                    
+                    <div className="border-t border-slate-200 pt-3">
+                      <a 
+                        href={selectedTransfer.proof_image_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline text-sm font-medium"
+                      >
+                        🖼️ Voir la preuve uploadée
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Section Commentaires */}
               <div className="border-t pt-4">
