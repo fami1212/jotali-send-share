@@ -54,6 +54,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (error) throw error;
+
+      // Créer le profil manuellement si l'utilisateur est créé
+      if (data.user) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            user_id: data.user.id,
+            first_name: firstName.trim(),
+            last_name: lastName.trim(),
+            email: email.trim().toLowerCase(),
+          });
+
+        // Ignorer l'erreur si le profil existe déjà
+        if (profileError && !profileError.message.includes('duplicate')) {
+          console.error('Erreur création profil:', profileError);
+        }
+      }
+
       return { data, error: null };
     } catch (error: any) {
       return { error: { message: error.message || 'Erreur inscription' } };
