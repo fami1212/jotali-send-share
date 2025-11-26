@@ -47,69 +47,79 @@ const Auth = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Sanitize inputs
-    const sanitizedEmail = email.trim().toLowerCase();
-    const sanitizedFirstName = firstName.trim();
-    const sanitizedLastName = lastName.trim();
-
-    // Basic client-side validation
-    if (!sanitizedEmail || !password) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez remplir tous les champs requis",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!isLogin && (!sanitizedFirstName || !sanitizedLastName)) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez remplir tous les champs",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsLoading(true);
 
     try {
       if (isLogin) {
-        const { error } = await signIn(sanitizedEmail, password);
+        // CONNEXION
+        const { error } = await signIn(email, password);
+        
         if (error) {
-          const errorMessage = error.message === "Invalid login credentials" 
-            ? "Email ou mot de passe incorrect" 
-            : error.message || "Erreur de connexion";
+          let errorMessage = "Erreur de connexion";
+          
+          if (error.message.includes("Invalid login credentials")) {
+            errorMessage = "Email ou mot de passe incorrect";
+          } else if (error.message.includes("Email not confirmed")) {
+            errorMessage = "Veuillez confirmer votre email avant de vous connecter";
+          } else {
+            errorMessage = error.message;
+          }
           
           toast({
-            title: "Erreur de connexion",
+            title: "Connexion échouée",
             description: errorMessage,
-            variant: "destructive",
-          });
-        }
-      } else {
-        const { error } = await signUp(sanitizedEmail, password, sanitizedFirstName, sanitizedLastName);
-        if (error) {
-          toast({
-            title: "Erreur d'inscription",
-            description: error.message || "Impossible de créer le compte",
             variant: "destructive",
           });
         } else {
           toast({
-            title: "Inscription réussie",
-            description: "Vérifiez votre email pour confirmer votre compte",
+            title: "Connexion réussie",
+            description: "Bienvenue !",
           });
-          // Reset form
+        }
+      } else {
+        // INSCRIPTION
+        const { error, data } = await signUp(email, password, firstName, lastName);
+        
+        if (error) {
+          let errorMessage = "Impossible de créer le compte";
+          
+          if (error.message.includes("already registered")) {
+            errorMessage = "Cet email est déjà utilisé";
+          } else if (error.message.includes("Password")) {
+            errorMessage = "Le mot de passe ne respecte pas les critères de sécurité";
+          } else {
+            errorMessage = error.message;
+          }
+          
+          toast({
+            title: "Inscription échouée",
+            description: errorMessage,
+            variant: "destructive",
+          });
+        } else if (data?.user) {
+          // Inscription réussie avec utilisateur créé
+          toast({
+            title: "✅ Compte créé avec succès !",
+            description: data.user.email_confirmed_at 
+              ? "Vous pouvez maintenant vous connecter" 
+              : "Vérifiez votre email pour confirmer votre compte",
+          });
+          
+          // Réinitialiser le formulaire
           setEmail('');
           setPassword('');
           setFirstName('');
           setLastName('');
           setPasswordStrength(null);
+          
+          // Basculer vers le mode connexion
+          setTimeout(() => {
+            setIsLogin(true);
+          }, 2000);
         }
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Erreur inattendue:', error);
       toast({
         title: "Erreur",
         description: "Une erreur inattendue s'est produite",
