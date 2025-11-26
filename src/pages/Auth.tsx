@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { ArrowRightLeft, Mail, Lock, User, Eye, EyeOff, Shield } from 'lucide-react';
+import { ArrowRightLeft, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -16,20 +16,14 @@ const Auth = () => {
   const [lastName, setLastName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [passwordStrength, setPasswordStrength] = useState<'weak' | 'medium' | 'strong' | null>(null);
 
   const { user, signIn, signUp } = useAuth();
   const { toast } = useToast();
 
-  const checkPasswordStrength = (pwd: string) => {
-    if (!pwd) return setPasswordStrength(null);
-    const strength = [/[A-Z]/, /[a-z]/, /[0-9]/, /[!@#$%^&*(),.?":{}|<>]/, /.{8,}/]
-      .map(r => r.test(pwd))
-      .filter(Boolean).length;
-    setPasswordStrength(strength <= 2 ? 'weak' : strength <= 3 ? 'medium' : 'strong');
-  };
-
-  if (user) return <Navigate to="/dashboard" replace />;
+  // Rediriger si déjà connecté
+  if (user) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,30 +31,52 @@ const Auth = () => {
 
     try {
       if (isLogin) {
+        // Connexion
         const { error } = await signIn(email, password);
+        
         if (error) {
-          toast({ title: 'Connexion échouée', description: error.message, variant: 'destructive' });
+          toast({
+            title: 'Connexion échouée',
+            description: error.message,
+            variant: 'destructive',
+          });
         } else {
-          toast({ title: 'Connexion réussie', description: 'Bienvenue !' });
+          toast({
+            title: 'Connexion réussie',
+            description: 'Bienvenue !',
+          });
         }
       } else {
+        // Inscription
         const { error, data } = await signUp(email, password, firstName, lastName);
+        
         if (error) {
-          toast({ title: 'Inscription échouée', description: error.message, variant: 'destructive' });
+          toast({
+            title: 'Inscription échouée',
+            description: error.message,
+            variant: 'destructive',
+          });
         } else if (data?.user) {
           toast({
-            title: '✅ Compte créé !',
-            description: data.user.email_confirmed_at
-              ? 'Vous pouvez maintenant vous connecter'
-              : 'Vérifiez votre email pour confirmer votre compte'
+            title: 'Compte créé avec succès',
+            description: 'Vous pouvez maintenant vous connecter',
           });
-          setEmail(''); setPassword(''); setFirstName(''); setLastName(''); setPasswordStrength(null);
-          setTimeout(() => setIsLogin(true), 2000);
+          
+          // Réinitialiser le formulaire et basculer vers la connexion
+          setEmail('');
+          setPassword('');
+          setFirstName('');
+          setLastName('');
+          setTimeout(() => setIsLogin(true), 1500);
         }
       }
     } catch (err: any) {
-      console.error('Erreur inattendue:', err);
-      toast({ title: 'Erreur', description: 'Une erreur inattendue est survenue', variant: 'destructive' });
+      console.error('Erreur handleSubmit:', err);
+      toast({
+        title: 'Erreur',
+        description: 'Une erreur inattendue est survenue',
+        variant: 'destructive',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -72,42 +88,53 @@ const Auth = () => {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center space-x-2 mb-4">
-            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center">
+            <div className="w-12 h-12 bg-background rounded-full flex items-center justify-center">
               <ArrowRightLeft className="w-7 h-7 text-primary" />
             </div>
-            <span className="text-3xl font-bold text-white">TransferApp</span>
+            <span className="text-3xl font-bold text-foreground">TransferApp</span>
           </div>
-          <p className="text-white/80">{isLogin ? 'Connectez-vous à votre compte' : 'Créez votre compte'}</p>
+          <p className="text-muted-foreground">
+            {isLogin ? 'Connectez-vous à votre compte' : 'Créez votre compte'}
+          </p>
         </div>
 
-        <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-strong p-8">
-          {!isLogin && (
-            <div className="flex items-center gap-2 p-3 bg-info/10 rounded-lg mb-4 text-sm text-info-foreground">
-              <Shield className="w-4 h-4" />
-              <p>Toutes vos données sont cryptées et protégées</p>
-            </div>
-          )}
-
+        <Card className="bg-card border-border shadow-lg p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Nom et Prénom (inscription uniquement) */}
             {!isLogin && (
               <div className="grid grid-cols-2 gap-4">
-                {['Prénom', 'Nom'].map((label, i) => (
-                  <div key={i} className="space-y-2">
-                    <Label htmlFor={label.toLowerCase()}>{label}</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input
-                        id={label.toLowerCase()}
-                        type="text"
-                        value={i === 0 ? firstName : lastName}
-                        onChange={e => i === 0 ? setFirstName(e.target.value) : setLastName(e.target.value)}
-                        className="pl-10"
-                        placeholder={label}
-                        required
-                      />
-                    </div>
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">Prénom</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="firstName"
+                      type="text"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      className="pl-10"
+                      placeholder="Prénom"
+                      required
+                      disabled={isLoading}
+                    />
                   </div>
-                ))}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Nom</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="lastName"
+                      type="text"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      className="pl-10"
+                      placeholder="Nom"
+                      required
+                      disabled={isLoading}
+                    />
+                  </div>
+                </div>
               </div>
             )}
 
@@ -120,15 +147,16 @@ const Auth = () => {
                   id="email"
                   type="email"
                   value={email}
-                  onChange={e => setEmail(e.target.value)}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="pl-10"
                   placeholder="votre@email.com"
                   required
+                  disabled={isLoading}
                 />
               </div>
             </div>
 
-            {/* Password */}
+            {/* Mot de passe */}
             <div className="space-y-2">
               <Label htmlFor="password">Mot de passe</Label>
               <div className="relative">
@@ -137,58 +165,54 @@ const Auth = () => {
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
-                  onChange={e => {
-                    setPassword(e.target.value);
-                    if (!isLogin) checkPasswordStrength(e.target.value);
-                  }}
+                  onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 pr-10"
                   placeholder="••••••••"
                   required
                   minLength={8}
-                  maxLength={72}
+                  disabled={isLoading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  disabled={isLoading}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-
-              {!isLogin && passwordStrength && (
-                <div className="flex items-center gap-2 mt-2">
-                  <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className={`h-full transition-all ${
-                        passwordStrength === 'weak' ? 'bg-destructive w-1/3' :
-                        passwordStrength === 'medium' ? 'bg-warning w-2/3' : 'bg-success w-full'
-                      }`}
-                    />
-                  </div>
-                  <span className={`text-xs ${
-                    passwordStrength === 'weak' ? 'text-destructive' :
-                    passwordStrength === 'medium' ? 'text-warning' : 'text-success'
-                  }`}>
-                    {passwordStrength === 'weak' ? 'Faible' : passwordStrength === 'medium' ? 'Moyen' : 'Fort'}
-                  </span>
-                </div>
-              )}
-
               {!isLogin && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule et un chiffre
+                <p className="text-xs text-muted-foreground">
+                  Minimum 8 caractères
                 </p>
               )}
             </div>
 
-            <Button type="submit" className="w-full bg-gradient-primary hover:opacity-90" size="lg" disabled={isLoading}>
+            {/* Bouton de soumission */}
+            <Button
+              type="submit"
+              className="w-full bg-gradient-primary hover:opacity-90"
+              size="lg"
+              disabled={isLoading}
+            >
               {isLoading ? 'Chargement...' : isLogin ? 'Se connecter' : 'Créer un compte'}
             </Button>
 
+            {/* Basculer entre connexion et inscription */}
             <div className="text-center">
-              <button type="button" onClick={() => setIsLogin(!isLogin)} className="text-primary hover:underline text-sm">
-                {isLogin ? "Pas encore de compte ? S'inscrire" : "Déjà un compte ? Se connecter"}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLogin(!isLogin);
+                  setEmail('');
+                  setPassword('');
+                  setFirstName('');
+                  setLastName('');
+                }}
+                className="text-primary hover:underline text-sm"
+                disabled={isLoading}
+              >
+                {isLogin ? "Pas encore de compte ? S'inscrire" : 'Déjà un compte ? Se connecter'}
               </button>
             </div>
           </form>
