@@ -15,45 +15,30 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Schémas de validation sécurisés
-const emailSchema = z.string()
-  .email('Format email invalide')
-  .trim()
-  .toLowerCase()
-  .max(255, 'Email trop long');
-
+// Validation sécurisée
+const emailSchema = z.string().email('Format email invalide').trim().toLowerCase().max(255);
 const passwordSchema = z.string()
-  .min(8, 'Minimum 8 caractères requis')
-  .max(72, 'Maximum 72 caractères')
+  .min(8, 'Minimum 8 caractères')
+  .max(72)
   .regex(/[A-Z]/, 'Une majuscule requise')
   .regex(/[a-z]/, 'Une minuscule requise')
   .regex(/[0-9]/, 'Un chiffre requis');
-
-const nameSchema = z.string()
-  .trim()
-  .min(1, 'Champ requis')
-  .max(100, 'Maximum 100 caractères')
-  .regex(/^[a-zA-ZÀ-ÿ\s'-]+$/, 'Caractères invalides détectés');
+const nameSchema = z.string().trim().min(1).max(100).regex(/^[a-zA-ZÀ-ÿ\s'-]+$/, 'Caractères invalides');
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Activer les notifications en temps réel
   useRealtimeNotifications(user?.id);
 
   useEffect(() => {
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-      }
-    );
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
 
-    // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -65,16 +50,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string, firstName: string, lastName: string) => {
     try {
-      // Validation stricte des entrées
       const validatedEmail = emailSchema.parse(email);
       passwordSchema.parse(password);
       const validatedFirstName = nameSchema.parse(firstName);
       const validatedLastName = nameSchema.parse(lastName);
 
-      // URL de redirection sécurisée
       const redirectUrl = `${window.location.origin}/`;
-      
-      // Inscription avec métadonnées utilisateur
       const { data, error } = await supabase.auth.signUp({
         email: validatedEmail,
         password,
@@ -83,24 +64,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           data: {
             first_name: validatedFirstName,
             last_name: validatedLastName,
-          }
-        }
+          },
+        },
       });
 
-      if (error) {
-        console.error('Erreur d\'inscription:', error);
-        return { error };
-      }
+
+      if (error) return { error };
 
       return { data, error: null };
-
-    } catch (validationError) {
-      if (validationError instanceof z.ZodError) {
-        return { 
-          error: { 
-            message: validationError.issues[0].message 
-          } 
-        };
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        return { error: { message: err.issues[0].message } };
       }
       return { error: { message: 'Erreur de validation des données' } };
     }
@@ -108,53 +82,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
-      // Validation de l'email
       const validatedEmail = emailSchema.parse(email);
-      
-      // Vérification du mot de passe
-      if (!password || password.length === 0) {
-        return { error: { message: 'Mot de passe requis' } };
-      }
 
-      // Connexion
-      const { error } = await supabase.auth.signInWithPassword({
-        email: validatedEmail,
-        password,
-      });
+      if (!password) return { error: { message: 'Mot de passe requis' } };
 
-      if (error) {
-        console.error('Erreur de connexion:', error);
-      }
-      
+      const { error } = await supabase.auth.signInWithPassword({ email: validatedEmail, password });
       return { error };
-
-    } catch (validationError) {
-      if (validationError instanceof z.ZodError) {
-        return { 
-          error: { 
-            message: validationError.issues[0].message 
-          } 
-        };
-      }
+    } catch (err: any) {
+      if (err instanceof z.ZodError) return { error: { message: err.issues[0].message } };
       return { error: { message: 'Email invalide' } };
     }
   };
 
   const signOut = async () => {
     await supabase.auth.signOut();
-  };
-
-  const value = {
-    user,
-    session,
-    loading,
-    signUp,
-    signIn,
-    signOut,
+    setUser(null);
+    setSession(null);
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );
@@ -162,8 +109,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 }
