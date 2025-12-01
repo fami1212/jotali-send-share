@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ArrowRightLeft, Search, Filter, Eye, X, Calendar as CalendarIcon, Download, FileSpreadsheet, FileText, ChevronLeft, ChevronRight, Upload, MessageSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
@@ -18,7 +18,8 @@ import Navbar from '@/components/Navbar';
 import BottomNavigation from '@/components/BottomNavigation';
 import UploadProofDialog from '@/components/UploadProofDialog';
 import { ProofComments } from '@/components/ProofComments';
-import TransferChat from '@/components/TransferChat';
+import FloatingChat from '@/components/FloatingChat';
+import { useRealtimeMessages } from '@/hooks/useRealtimeMessages';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -64,8 +65,16 @@ const History = () => {
   const [showUploadProofDialog, setShowUploadProofDialog] = useState(false);
   const [selectedTransferIdForProof, setSelectedTransferIdForProof] = useState<string | undefined>();
   const [showChat, setShowChat] = useState(false);
-  const [chatTransferId, setChatTransferId] = useState<string | undefined>();
+  const [chatTransferId, setChatTransferId] = useState<string | null>(null);
   const itemsPerPage = 10;
+
+  // Auto-open chat on new messages
+  const handleNewMessage = useCallback((transferId: string) => {
+    setChatTransferId(transferId);
+    setShowChat(true);
+  }, []);
+
+  const { unreadCount } = useRealtimeMessages(user?.id, handleNewMessage);
 
   useEffect(() => {
     if (user) {
@@ -825,20 +834,23 @@ const History = () => {
         }}
       />
 
-      {/* Chat Dialog */}
-      <Dialog open={showChat} onOpenChange={setShowChat}>
-        <DialogContent className="max-w-3xl max-h-[90vh] p-0">
-          {chatTransferId && (
-            <TransferChat 
-              transferId={chatTransferId}
-              onClose={() => {
-                setShowChat(false);
-                setChatTransferId(undefined);
-              }}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Floating Chat */}
+      <FloatingChat
+        transferId={chatTransferId}
+        isOpen={showChat}
+        onClose={() => {
+          setShowChat(false);
+          setChatTransferId(null);
+        }}
+        onOpen={() => {
+          // Open chat for the most recent transfer with unread messages
+          if (transfers.length > 0) {
+            setChatTransferId(transfers[0].id);
+            setShowChat(true);
+          }
+        }}
+        unreadCount={unreadCount}
+      />
 
       {/* Bottom Navigation */}
       <BottomNavigation />

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle, XCircle, Eye, Download, FileText, Search, Filter, X, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -21,7 +21,8 @@ import ExchangeRateManager from '@/components/admin/ExchangeRateManager';
 import AdminCharts from '@/components/admin/AdminCharts';
 import { ProofStatistics } from '@/components/ProofStatistics';
 import { ProofComments } from '@/components/ProofComments';
-import TransferChat from '@/components/TransferChat';
+import FloatingChat from '@/components/FloatingChat';
+import { useAdminRealtimeMessages } from '@/hooks/useAdminRealtimeMessages';
 import { format } from 'date-fns';
 
 interface Transfer {
@@ -93,7 +94,15 @@ const UnifiedAdmin = () => {
   const [validationDialogOpen, setValidationDialogOpen] = useState(false);
   const [validationType, setValidationType] = useState<'verify' | 'invalid'>('verify');
   const [showChat, setShowChat] = useState(false);
-  const [chatTransferId, setChatTransferId] = useState<string | undefined>();
+  const [chatTransferId, setChatTransferId] = useState<string | null>(null);
+
+  // Auto-open chat on new messages from users
+  const handleNewMessage = useCallback((transferId: string) => {
+    setChatTransferId(transferId);
+    setShowChat(true);
+  }, []);
+
+  const { unreadCount } = useAdminRealtimeMessages(handleNewMessage);
 
   useEffect(() => {
     checkAdminStatus();
@@ -1020,20 +1029,23 @@ const UnifiedAdmin = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Chat Dialog */}
-      <Dialog open={showChat} onOpenChange={setShowChat}>
-        <DialogContent className="max-w-3xl max-h-[90vh] p-0">
-          {chatTransferId && (
-            <TransferChat 
-              transferId={chatTransferId}
-              onClose={() => {
-                setShowChat(false);
-                setChatTransferId(undefined);
-              }}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Floating Chat */}
+      <FloatingChat
+        transferId={chatTransferId}
+        isOpen={showChat}
+        onClose={() => {
+          setShowChat(false);
+          setChatTransferId(null);
+        }}
+        onOpen={() => {
+          // Open chat for most recent transfer
+          if (transfers.length > 0) {
+            setChatTransferId(transfers[0].id);
+            setShowChat(true);
+          }
+        }}
+        unreadCount={unreadCount}
+      />
 
       <BottomNavigation />
     </div>

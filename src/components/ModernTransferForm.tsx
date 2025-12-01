@@ -48,8 +48,14 @@ const ModernTransferForm = () => {
 
   useEffect(() => {
     if (receiveAmount && exchangeRates) {
-      const rate = conversionType === 'mad_to_cfa' ? exchangeRates.cfa_to_mad : exchangeRates.mad_to_cfa;
-      const send = parseFloat(receiveAmount) * rate;
+      let send = 0;
+      if (conversionType === 'mad_to_cfa') {
+        // MAD → CFA: diviser par le taux (0.0166667) = multiplier par 60
+        send = parseFloat(receiveAmount) * exchangeRates.cfa_to_mad;
+      } else {
+        // CFA → MAD: multiplier par 62.5 (inclut les frais)
+        send = parseFloat(receiveAmount) * 62.5;
+      }
       setSendAmount(send.toFixed(2));
     } else {
       setSendAmount("");
@@ -304,7 +310,7 @@ const ModernTransferForm = () => {
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Taux de change</span>
                   <span className="font-medium">
-                    1 {toCurrency} = {(conversionType === 'mad_to_cfa' ? exchangeRates.cfa_to_mad : exchangeRates.mad_to_cfa).toFixed(6)} {fromCurrency}
+                    1 {toCurrency} = {conversionType === 'mad_to_cfa' ? exchangeRates.cfa_to_mad.toFixed(6) : '62.50000'} {fromCurrency}
                   </span>
                 </div>
               </div>
@@ -462,7 +468,7 @@ const ModernTransferForm = () => {
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Taux de change</span>
                   <span className="font-medium text-sm">
-                    1 {toCurrency} = {(conversionType === 'mad_to_cfa' ? exchangeRates.cfa_to_mad : exchangeRates.mad_to_cfa).toFixed(6)} {fromCurrency}
+                    1 {toCurrency} = {conversionType === 'mad_to_cfa' ? exchangeRates.cfa_to_mad.toFixed(6) : '62.50000'} {fromCurrency}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
