@@ -550,15 +550,31 @@ const History = () => {
                     <div className="text-xs text-slate-500 whitespace-nowrap">
                       {formatDate(transfer.created_at)}
                     </div>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="text-xs h-8 px-3 text-slate-600 hover:text-primary"
-                      onClick={() => setSelectedTransfer(transfer)}
-                    >
-                      <Eye className="w-3 h-3 mr-1" />
-                      <span className="hidden sm:inline">Détails</span>
-                    </Button>
+                    <div className="flex gap-2">
+                      {!transfer.proof_image_url && (transfer.status === 'pending' || transfer.status === 'approved') && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-xs h-8 px-3 text-green-600 hover:text-green-700 border-green-200"
+                          onClick={() => {
+                            setSelectedTransferIdForProof(transfer.id);
+                            setShowUploadProofDialog(true);
+                          }}
+                        >
+                          <Upload className="w-3 h-3 mr-1" />
+                          <span className="hidden sm:inline">Preuve</span>
+                        </Button>
+                      )}
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-xs h-8 px-3 text-slate-600 hover:text-primary"
+                        onClick={() => setSelectedTransfer(transfer)}
+                      >
+                        <Eye className="w-3 h-3 mr-1" />
+                        <span className="hidden sm:inline">Détails</span>
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </Card>

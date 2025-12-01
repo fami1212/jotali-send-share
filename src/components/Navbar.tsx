@@ -69,11 +69,15 @@ const Navbar = () => {
     <header className="bg-white/95 backdrop-blur-sm border-b border-border/50 sticky top-0 z-50 shadow-sm">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
-        <Link to="/dashboard" className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-gradient-primary rounded-full flex items-center justify-center shadow-medium">
-            <ArrowRightLeft className="w-5 h-5 text-white" />
-          </div>
-          <span className="text-xl font-bold text-foreground">Koligo</span>
+        <Link to="/dashboard" className="flex items-center space-x-3">
+          <img 
+            src="/src/assets/jotali-logo.jpg" 
+            alt="Jotali Services"
+            className="h-10 w-auto object-contain"
+          />
+          <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
+            Jotali Services
+          </span>
         </Link>
 
         {/* Desktop Navigation */}
