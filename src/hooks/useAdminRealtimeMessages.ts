@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useNotificationSound } from "./useNotificationSound";
 
 export const useAdminRealtimeMessages = (onNewMessage?: (transferId: string) => void) => {
   const [unreadCount, setUnreadCount] = useState(0);
+  const { notify } = useNotificationSound();
 
   useEffect(() => {
     console.log("Setting up realtime messages for admin");
@@ -28,6 +30,9 @@ export const useAdminRealtimeMessages = (onNewMessage?: (transferId: string) => 
           // If message is from a user (not admin)
           if (!message.is_admin) {
             setUnreadCount(prev => prev + 1);
+            
+            // Play sound and vibrate
+            notify();
             
             toast.success("Nouveau message client", {
               description: "Un client vous a envoyé un message",

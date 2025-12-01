@@ -64,11 +64,13 @@ const History = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [showUploadProofDialog, setShowUploadProofDialog] = useState(false);
   const [selectedTransferIdForProof, setSelectedTransferIdForProof] = useState<string | undefined>();
+  const [unreadMessages, setUnreadMessages] = useState<Record<string, number>>({});
   const itemsPerPage = 10;
 
   useEffect(() => {
     if (user) {
       loadTransfers();
+      loadUnreadMessages();
     }
   }, [user]);
 
@@ -110,6 +112,38 @@ const History = () => {
       handleApiError(error, 'loadTransfers');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadUnreadMessages = async () => {
+    if (!user) return;
+
+    try {
+      const { data: transferIds } = await supabase
+        .from('transfers')
+        .select('id')
+        .eq('user_id', user.id);
+
+      if (!transferIds) return;
+
+      const unreadCounts: Record<string, number> = {};
+
+      for (const transfer of transferIds) {
+        const { count } = await supabase
+          .from('messages')
+          .select('*', { count: 'exact', head: true })
+          .eq('transfer_id', transfer.id)
+          .eq('is_admin', true)
+          .eq('read', false);
+
+        if (count && count > 0) {
+          unreadCounts[transfer.id] = count;
+        }
+      }
+
+      setUnreadMessages(unreadCounts);
+    } catch (error) {
+      console.error('Error loading unread messages:', error);
     }
   };
 
@@ -525,7 +559,7 @@ const History = () => {
                       <ArrowRightLeft className="w-5 h-5 text-white" />
                     </div>
                     
-                    <div className="min-w-0 flex-1">
+                     <div className="min-w-0 flex-1">
                       <div className="flex items-center flex-wrap gap-2 mb-1">
                         <h3 className="font-semibold text-slate-800 text-sm">
                           {transfer.reference_number}
@@ -533,6 +567,12 @@ const History = () => {
                         <Badge className={`text-xs ${getStatusColor(transfer.status)}`}>
                           {getStatusText(transfer.status)}
                         </Badge>
+                        {unreadMessages[transfer.id] && (
+                          <Badge variant="destructive" className="text-xs">
+                            <MessageSquare className="w-3 h-3 mr-1" />
+                            {unreadMessages[transfer.id]}
+                          </Badge>
+                        )}
                       </div>
                       
                       <div className="space-y-1 text-xs text-slate-600">
@@ -553,6 +593,23 @@ const History = () => {
                       {formatDate(transfer.created_at)}
                     </div>
                     <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="text-xs h-8 px-3 text-blue-600 hover:text-blue-700 border-blue-200 relative"
+                        onClick={() => openChat(transfer.id)}
+                      >
+                        <MessageSquare className="w-3 h-3 mr-1" />
+                        <span className="hidden sm:inline">Chat</span>
+                        {unreadMessages[transfer.id] && (
+                          <Badge 
+                            variant="destructive" 
+                            className="absolute -top-2 -right-2 h-4 w-4 flex items-center justify-center p-0 rounded-full text-[10px]"
+                          >
+                            {unreadMessages[transfer.id]}
+                          </Badge>
+                        )}
+                      </Button>
                       {!transfer.proof_image_url && (transfer.status === 'pending' || transfer.status === 'approved') && (
                         <Button 
                           variant="outline" 
