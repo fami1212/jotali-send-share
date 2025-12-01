@@ -163,31 +163,9 @@ const ClientMessaging = ({ onClose }: ClientMessagingProps) => {
 
   if (selectedConversation) {
     return (
-      <Card className="flex flex-col h-[500px] md:h-[600px] w-full">
-        <div className="flex items-center gap-3 p-4 border-b shrink-0">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setSelectedConversation(null)}
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </Button>
-          <div className="flex-1">
-            <h3 className="font-semibold">Transfert {selectedConversation.transfer.reference_number}</h3>
-            <p className="text-xs text-muted-foreground">
-              {selectedConversation.transfer.from_currency} → {selectedConversation.transfer.to_currency}
-            </p>
-          </div>
-          {onClose && (
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <X className="w-4 h-4" />
-            </Button>
-          )}
-        </div>
-        <div className="flex-1 overflow-hidden">
-          <TransferChat transferId={selectedConversation.transfer.id} />
-        </div>
-      </Card>
+      <div className="flex flex-col h-[500px] md:h-[600px] w-full">
+        <TransferChat transferId={selectedConversation.transfer.id} onClose={() => setSelectedConversation(null)} />
+      </div>
     );
   }
 

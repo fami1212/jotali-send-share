@@ -224,34 +224,9 @@ const AdminMessaging = ({ onClose }: AdminMessagingProps) => {
 
   if (selectedConversation) {
     return (
-      <Card className="flex flex-col h-[500px] md:h-[600px] w-full">
-        <div className="flex items-center gap-3 p-4 border-b shrink-0">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setSelectedConversation(null)}
-          >
-            <X className="w-4 h-4" />
-          </Button>
-          <div className="flex-1">
-            <h3 className="font-semibold">{selectedConversation.user_name}</h3>
-            <p className="text-xs text-muted-foreground">
-              {selectedConversation.user_email} • {selectedConversation.user_phone}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Transfert: {selectedConversation.reference_number}
-            </p>
-          </div>
-          {onClose && (
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <X className="w-4 h-4" />
-            </Button>
-          )}
-        </div>
-        <div className="flex-1 overflow-hidden">
-          <TransferChat transferId={selectedConversation.transfer_id} />
-        </div>
-      </Card>
+      <div className="flex flex-col h-[500px] md:h-[600px] w-full">
+        <TransferChat transferId={selectedConversation.transfer_id} onClose={() => setSelectedConversation(null)} />
+      </div>
     );
   }
 
