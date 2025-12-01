@@ -82,7 +82,12 @@ const ModernTransferForm = () => {
     if (!sendAmount) return 0;
     const baseAmount = parseFloat(sendAmount);
     
-    // Sénégal = 1%, autres pays Wave/OM = 1.5%, virement = 0%
+    // Pour CFA→MAD, le taux de 62.5 inclut déjà les frais, donc pas de frais supplémentaires
+    if (conversionType === 'cfa_to_mad') {
+      return 0;
+    }
+    
+    // Pour MAD→CFA: Sénégal = 1%, autres pays Wave/OM = 1.5%, virement = 0%
     if (selectedRecipient?.country === 'Sénégal') {
       return baseAmount * 0.01; // 1%
     }

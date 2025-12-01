@@ -34,28 +34,23 @@ export const NotificationCenter = () => {
   }, [user?.id]);
 
   const loadNotifications = async () => {
-    // For now, we'll simulate notifications based on transfer status changes
     try {
-      const { data: transfers } = await supabase
-        .from('transfers')
+      const { data, error } = await supabase
+        .from('notifications')
         .select('*')
         .eq('user_id', user?.id)
-        .order('updated_at', { ascending: false })
-        .limit(10);
+        .order('created_at', { ascending: false })
+        .limit(20);
 
-      if (transfers) {
-        const mockNotifications: Notification[] = transfers.map(transfer => ({
-          id: `notif-${transfer.id}`,
-          title: getNotificationTitle(transfer.status, transfer.transfer_type),
-          message: getNotificationMessage(transfer.status, transfer.reference_number),
-          type: getNotificationType(transfer.status),
-          read: false,
-          created_at: transfer.updated_at,
-          transfer_id: transfer.id
+      if (error) throw error;
+
+      if (data) {
+        const validNotifications: Notification[] = data.map(n => ({
+          ...n,
+          type: (n.type as 'info' | 'success' | 'warning' | 'error') || 'info'
         }));
-
-        setNotifications(mockNotifications);
-        setUnreadCount(mockNotifications.filter(n => !n.read).length);
+        setNotifications(validNotifications);
+        setUnreadCount(validNotifications.filter(n => !n.read).length);
       }
     } catch (error) {
       console.error('Error loading notifications:', error);
@@ -64,26 +59,17 @@ export const NotificationCenter = () => {
 
   const subscribeToTransferUpdates = () => {
     const channel = supabase
-      .channel('transfer-updates')
+      .channel('notifications-realtime')
       .on(
         'postgres_changes',
         {
-          event: 'UPDATE',
+          event: 'INSERT',
           schema: 'public',
-          table: 'transfers',
+          table: 'notifications',
           filter: `user_id=eq.${user?.id}`
         },
         (payload) => {
-          const transfer = payload.new as any;
-          const notification: Notification = {
-            id: `notif-${transfer.id}-${Date.now()}`,
-            title: getNotificationTitle(transfer.status, transfer.transfer_type),
-            message: getNotificationMessage(transfer.status, transfer.reference_number),
-            type: getNotificationType(transfer.status),
-            read: false,
-            created_at: new Date().toISOString(),
-            transfer_id: transfer.id
-          };
+          const notification = payload.new as Notification;
 
           setNotifications(prev => [notification, ...prev]);
           setUnreadCount(prev => prev + 1);
@@ -92,6 +78,7 @@ export const NotificationCenter = () => {
           toast({
             title: notification.title,
             description: notification.message,
+            variant: notification.type === 'error' ? 'destructive' : 'default'
           });
         }
       )
@@ -102,57 +89,39 @@ export const NotificationCenter = () => {
     };
   };
 
-  const getNotificationTitle = (status: string, type: string) => {
-    switch (status) {
-      case 'approved': return type === 'send' ? 'Envoi approuvé' : 'Transfert approuvé';
-      case 'completed': return type === 'send' ? 'Envoi terminé' : 'Transfert terminé';
-      case 'rejected': return type === 'send' ? 'Envoi rejeté' : 'Transfert rejeté';
-      case 'cancelled': return type === 'send' ? 'Envoi annulé' : 'Transfert annulé';
-      default: return 'Mise à jour de statut';
+  const markAsRead = async (notificationId: string) => {
+    try {
+      await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('id', notificationId);
+
+      setNotifications(prev =>
+        prev.map(n =>
+          n.id === notificationId ? { ...n, read: true } : n
+        )
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
     }
   };
 
-  const getNotificationMessage = (status: string, reference: string) => {
-    switch (status) {
-      case 'approved':
-        return `Votre transfert ${reference} a été approuvé par l'administrateur.`;
-      case 'completed':
-        return `Votre transfert ${reference} a été terminé avec succès.`;
-      case 'rejected':
-        return `Votre transfert ${reference} a été rejeté. Consultez les notes de l'administrateur.`;
-      case 'cancelled':
-        return `Votre transfert ${reference} a été annulé.`;
-      default:
-        return `Le statut de votre transfert ${reference} a été mis à jour.`;
+  const markAllAsRead = async () => {
+    try {
+      const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
+      if (unreadIds.length > 0) {
+        await supabase
+          .from('notifications')
+          .update({ read: true })
+          .in('id', unreadIds);
+      }
+
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      setUnreadCount(0);
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
     }
-  };
-
-  const getNotificationType = (status: string): 'info' | 'success' | 'warning' | 'error' => {
-    switch (status) {
-      case 'approved':
-      case 'completed':
-        return 'success';
-      case 'rejected':
-        return 'error';
-      case 'cancelled':
-        return 'warning';
-      default:
-        return 'info';
-    }
-  };
-
-  const markAsRead = (notificationId: string) => {
-    setNotifications(prev =>
-      prev.map(n =>
-        n.id === notificationId ? { ...n, read: true } : n
-      )
-    );
-    setUnreadCount(prev => Math.max(0, prev - 1));
-  };
-
-  const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    setUnreadCount(0);
   };
 
   const getNotificationIcon = (type: string) => {

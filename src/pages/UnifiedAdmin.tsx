@@ -21,6 +21,7 @@ import ExchangeRateManager from '@/components/admin/ExchangeRateManager';
 import AdminCharts from '@/components/admin/AdminCharts';
 import { ProofStatistics } from '@/components/ProofStatistics';
 import { ProofComments } from '@/components/ProofComments';
+import TransferChat from '@/components/TransferChat';
 import { format } from 'date-fns';
 
 interface Transfer {
@@ -91,6 +92,8 @@ const UnifiedAdmin = () => {
   const [proofComment, setProofComment] = useState('');
   const [validationDialogOpen, setValidationDialogOpen] = useState(false);
   const [validationType, setValidationType] = useState<'verify' | 'invalid'>('verify');
+  const [showChat, setShowChat] = useState(false);
+  const [chatTransferId, setChatTransferId] = useState<string | undefined>();
 
   useEffect(() => {
     checkAdminStatus();
@@ -769,6 +772,18 @@ const UnifiedAdmin = () => {
                           <Download className="w-4 h-4 mr-1" />
                           Télécharger
                         </Button>
+                        <Button
+                          onClick={() => {
+                            setChatTransferId(transfer.id);
+                            setShowChat(true);
+                          }}
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 rounded-xl text-blue-600 hover:bg-blue-50"
+                        >
+                          <MessageSquare className="w-4 h-4 mr-1" />
+                          Chat
+                        </Button>
                       </div>
 
                       <div className="flex gap-2">
@@ -1001,6 +1016,21 @@ const UnifiedAdmin = () => {
                 className="w-full h-auto rounded-lg"
               />
             </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Chat Dialog */}
+      <Dialog open={showChat} onOpenChange={setShowChat}>
+        <DialogContent className="max-w-3xl max-h-[90vh] p-0">
+          {chatTransferId && (
+            <TransferChat 
+              transferId={chatTransferId}
+              onClose={() => {
+                setShowChat(false);
+                setChatTransferId(undefined);
+              }}
+            />
           )}
         </DialogContent>
       </Dialog>
