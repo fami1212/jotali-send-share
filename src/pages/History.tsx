@@ -14,12 +14,11 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useChat } from '@/contexts/ChatContext';
 import Navbar from '@/components/Navbar';
 import BottomNavigation from '@/components/BottomNavigation';
 import UploadProofDialog from '@/components/UploadProofDialog';
 import { ProofComments } from '@/components/ProofComments';
-import FloatingChat from '@/components/FloatingChat';
-import { useRealtimeMessages } from '@/hooks/useRealtimeMessages';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -50,6 +49,7 @@ interface Transfer {
 
 const History = () => {
   const { user } = useAuth();
+  const { openChat } = useChat();
   const navigate = useNavigate();
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [filteredTransfers, setFilteredTransfers] = useState<Transfer[]>([]);
@@ -64,17 +64,7 @@ const History = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [showUploadProofDialog, setShowUploadProofDialog] = useState(false);
   const [selectedTransferIdForProof, setSelectedTransferIdForProof] = useState<string | undefined>();
-  const [showChat, setShowChat] = useState(false);
-  const [chatTransferId, setChatTransferId] = useState<string | null>(null);
   const itemsPerPage = 10;
-
-  // Auto-open chat on new messages
-  const handleNewMessage = useCallback((transferId: string) => {
-    setChatTransferId(transferId);
-    setShowChat(true);
-  }, []);
-
-  const { unreadCount } = useRealtimeMessages(user?.id, handleNewMessage);
 
   useEffect(() => {
     if (user) {
@@ -800,8 +790,7 @@ const History = () => {
                   </Button>
                   <Button 
                     onClick={() => {
-                      setChatTransferId(selectedTransfer.id);
-                      setShowChat(true);
+                      openChat(selectedTransfer.id);
                       setSelectedTransfer(null);
                     }}
                     variant="outline"
@@ -832,24 +821,6 @@ const History = () => {
           loadTransfers();
           setSelectedTransferIdForProof(undefined);
         }}
-      />
-
-      {/* Floating Chat */}
-      <FloatingChat
-        transferId={chatTransferId}
-        isOpen={showChat}
-        onClose={() => {
-          setShowChat(false);
-          setChatTransferId(null);
-        }}
-        onOpen={() => {
-          // Open chat for the most recent transfer with unread messages
-          if (transfers.length > 0) {
-            setChatTransferId(transfers[0].id);
-            setShowChat(true);
-          }
-        }}
-        unreadCount={unreadCount}
       />
 
       {/* Bottom Navigation */}

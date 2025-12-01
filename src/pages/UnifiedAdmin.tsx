@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useChat } from '@/contexts/ChatContext';
 import Navbar from '@/components/Navbar';
 import BottomNavigation from '@/components/BottomNavigation';
 import AdminStats from '@/components/admin/AdminStats';
@@ -21,8 +22,6 @@ import ExchangeRateManager from '@/components/admin/ExchangeRateManager';
 import AdminCharts from '@/components/admin/AdminCharts';
 import { ProofStatistics } from '@/components/ProofStatistics';
 import { ProofComments } from '@/components/ProofComments';
-import FloatingChat from '@/components/FloatingChat';
-import { useAdminRealtimeMessages } from '@/hooks/useAdminRealtimeMessages';
 import { format } from 'date-fns';
 
 interface Transfer {
@@ -63,6 +62,7 @@ interface Transfer {
 
 const UnifiedAdmin = () => {
   const { user } = useAuth();
+  const { openChat } = useChat();
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -93,16 +93,6 @@ const UnifiedAdmin = () => {
   const [proofComment, setProofComment] = useState('');
   const [validationDialogOpen, setValidationDialogOpen] = useState(false);
   const [validationType, setValidationType] = useState<'verify' | 'invalid'>('verify');
-  const [showChat, setShowChat] = useState(false);
-  const [chatTransferId, setChatTransferId] = useState<string | null>(null);
-
-  // Auto-open chat on new messages from users
-  const handleNewMessage = useCallback((transferId: string) => {
-    setChatTransferId(transferId);
-    setShowChat(true);
-  }, []);
-
-  const { unreadCount } = useAdminRealtimeMessages(handleNewMessage);
 
   useEffect(() => {
     checkAdminStatus();
@@ -782,10 +772,7 @@ const UnifiedAdmin = () => {
                           Télécharger
                         </Button>
                         <Button
-                          onClick={() => {
-                            setChatTransferId(transfer.id);
-                            setShowChat(true);
-                          }}
+                          onClick={() => openChat(transfer.id)}
                           variant="outline"
                           size="sm"
                           className="flex-1 rounded-xl text-blue-600 hover:bg-blue-50"
@@ -1028,24 +1015,6 @@ const UnifiedAdmin = () => {
           )}
         </DialogContent>
       </Dialog>
-
-      {/* Floating Chat */}
-      <FloatingChat
-        transferId={chatTransferId}
-        isOpen={showChat}
-        onClose={() => {
-          setShowChat(false);
-          setChatTransferId(null);
-        }}
-        onOpen={() => {
-          // Open chat for most recent transfer
-          if (transfers.length > 0) {
-            setChatTransferId(transfers[0].id);
-            setShowChat(true);
-          }
-        }}
-        unreadCount={unreadCount}
-      />
 
       <BottomNavigation />
     </div>
