@@ -92,6 +92,47 @@ export type Database = {
         }
         Relationships: []
       }
+      messages: {
+        Row: {
+          created_at: string
+          file_url: string | null
+          id: string
+          is_admin: boolean
+          message: string | null
+          read: boolean
+          sender_id: string
+          transfer_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_url?: string | null
+          id?: string
+          is_admin?: boolean
+          message?: string | null
+          read?: boolean
+          sender_id: string
+          transfer_id: string
+        }
+        Update: {
+          created_at?: string
+          file_url?: string | null
+          id?: string
+          is_admin?: boolean
+          message?: string | null
+          read?: boolean
+          sender_id?: string
+          transfer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_transfer_id_fkey"
+            columns: ["transfer_id"]
+            isOneToOne: false
+            referencedRelation: "transfers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
@@ -218,34 +259,31 @@ export type Database = {
       }
       recipients: {
         Row: {
-          bank_account: string | null
           country: string
           created_at: string
           id: string
           name: string
           phone: string
+          transfer_number: string | null
           user_id: string
-          wave_number: string | null
         }
         Insert: {
-          bank_account?: string | null
           country: string
           created_at?: string
           id?: string
           name: string
           phone: string
+          transfer_number?: string | null
           user_id: string
-          wave_number?: string | null
         }
         Update: {
-          bank_account?: string | null
           country?: string
           created_at?: string
           id?: string
           name?: string
           phone?: string
+          transfer_number?: string | null
           user_id?: string
-          wave_number?: string | null
         }
         Relationships: []
       }
