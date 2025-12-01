@@ -116,9 +116,9 @@ const ModernTransferForm = () => {
       return;
     }
 
-    const transferType = conversionType === 'mad_to_cfa' ? 'send' : 'withdraw';
+    const transferType = conversionType === 'mad_to_cfa' ? 'transfer' : 'withdrawal';
     
-    if (transferType === 'send' && !selectedRecipient) {
+    if (transferType === 'transfer' && !selectedRecipient) {
       toast.error("Veuillez sélectionner un bénéficiaire");
       return;
     }

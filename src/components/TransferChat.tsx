@@ -167,9 +167,9 @@ const TransferChat = ({ transferId, onClose }: TransferChatProps) => {
   };
 
   return (
-    <Card className="flex flex-col h-[600px] max-w-2xl mx-auto">
+    <Card className="flex flex-col h-[500px] md:h-[600px] w-full">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b">
+      <div className="flex items-center justify-between p-4 border-b shrink-0">
         <h3 className="font-semibold text-lg">Messagerie du transfert</h3>
         {onClose && (
           <Button variant="ghost" size="icon" onClick={onClose}>
@@ -179,7 +179,7 @@ const TransferChat = ({ transferId, onClose }: TransferChatProps) => {
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+      <ScrollArea className="flex-1 p-4 overflow-y-auto" ref={scrollRef}>
         <div className="space-y-4">
           {messages.map((msg) => (
             <div
@@ -222,7 +222,7 @@ const TransferChat = ({ transferId, onClose }: TransferChatProps) => {
       </ScrollArea>
 
       {/* Input area */}
-      <div className="p-4 border-t space-y-3">
+      <div className="p-4 border-t space-y-3 shrink-0">
         {selectedFile && (
           <div className="flex items-center gap-2 p-2 bg-muted rounded">
             <Paperclip className="w-4 h-4" />

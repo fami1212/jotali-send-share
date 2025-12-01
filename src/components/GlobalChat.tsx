@@ -23,15 +23,21 @@ const GlobalChat = () => {
 
   useEffect(() => {
     const loadLatestTransfer = async () => {
-      if (!user || isAdmin) return;
+      if (!user) return;
       
-      const { data } = await supabase
+      // Pour les admins, on charge le dernier transfert de tous les utilisateurs
+      // Pour les users, on charge leur dernier transfert
+      const query = supabase
         .from('transfers')
         .select('id')
-        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+        .limit(1);
+      
+      if (!isAdmin) {
+        query.eq('user_id', user.id);
+      }
+      
+      const { data } = await query.single();
       
       if (data) {
         setLatestTransferId(data.id);
