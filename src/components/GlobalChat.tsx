@@ -1,10 +1,15 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useChat } from '@/contexts/ChatContext';
 import FloatingChat from './FloatingChat';
+import AdminMessaging from './AdminMessaging';
 import { useRealtimeMessages } from '@/hooks/useRealtimeMessages';
 import { useAdminRealtimeMessages } from '@/hooks/useAdminRealtimeMessages';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { motion, AnimatePresence } from 'framer-motion';
+import { MessageCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 const GlobalChat = () => {
   const { user } = useAuth();
@@ -62,7 +67,56 @@ const GlobalChat = () => {
   const unreadCount = isAdmin ? adminUnreadCount : userUnreadCount;
   const displayTransferId = transferId || latestTransferId;
 
-  if (!user || !displayTransferId) return null;
+  if (!user) return null;
+
+  // Admin gets the special messaging interface
+  if (isAdmin) {
+    return (
+      <>
+        {/* Floating Button for Admin */}
+        {!isOpen && (
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            className="fixed bottom-20 md:bottom-6 right-6 z-50"
+          >
+            <Button
+              onClick={() => openChat('')}
+              size="lg"
+              className="h-14 w-14 rounded-full shadow-lg relative"
+            >
+              <MessageCircle className="w-6 h-6" />
+              {adminUnreadCount > 0 && (
+                <Badge 
+                  variant="destructive" 
+                  className="absolute -top-2 -right-2 h-6 w-6 flex items-center justify-center p-0 rounded-full"
+                >
+                  {adminUnreadCount > 9 ? '9+' : adminUnreadCount}
+                </Badge>
+              )}
+            </Button>
+          </motion.div>
+        )}
+
+        {/* Admin Messaging Window */}
+        <AnimatePresence>
+          {isOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.95 }}
+              className="fixed bottom-20 md:bottom-6 right-6 z-50 w-[90vw] md:w-[450px] max-w-[450px] shadow-2xl rounded-lg overflow-hidden"
+            >
+              <AdminMessaging onClose={closeChat} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </>
+    );
+  }
+
+  // Regular users get the floating chat with latest transfer
+  if (!displayTransferId) return null;
 
   return (
     <FloatingChat

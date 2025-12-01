@@ -33,8 +33,18 @@ const TransferChat = ({ transferId, onClose }: TransferChatProps) => {
   const [newMessage, setNewMessage] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      if (!user) return;
+      const { data } = await supabase.rpc('is_admin', { user_id_input: user.id });
+      setIsAdmin(!!data);
+    };
+    checkAdmin();
+  }, [user]);
 
   useEffect(() => {
     if (transferId) {
@@ -119,7 +129,7 @@ const TransferChat = ({ transferId, onClose }: TransferChatProps) => {
         .insert({
           transfer_id: transferId,
           sender_id: user?.id,
-          is_admin: false,
+          is_admin: isAdmin,
           message: newMessage.trim() || null,
           file_url: fileUrl
         });
@@ -195,7 +205,7 @@ const TransferChat = ({ transferId, onClose }: TransferChatProps) => {
               >
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-xs font-medium">
-                    {msg.is_admin ? 'Admin' : 'Vous'}
+                    {msg.is_admin ? 'Admin' : msg.sender_id === user?.id ? 'Vous' : 'Client'}
                   </span>
                   <span className="text-xs opacity-70">
                     {format(new Date(msg.created_at), 'HH:mm', { locale: fr })}

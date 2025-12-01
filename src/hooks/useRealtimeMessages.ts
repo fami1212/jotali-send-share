@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useNotificationSound } from "./useNotificationSound";
 
 export const useRealtimeMessages = (userId: string | undefined, onNewMessage?: (transferId: string) => void) => {
   const [unreadCount, setUnreadCount] = useState(0);
+  const { notify } = useNotificationSound();
 
   useEffect(() => {
     if (!userId) return;
@@ -39,6 +41,9 @@ export const useRealtimeMessages = (userId: string | undefined, onNewMessage?: (
           
           if (isForThisUser) {
             setUnreadCount(prev => prev + 1);
+            
+            // Play sound and vibrate
+            notify();
             
             toast.success("Nouveau message", {
               description: message.is_admin ? "L'admin vous a envoyé un message" : "Nouveau message reçu",
