@@ -17,6 +17,7 @@ interface Conversation {
   user_id: string;
   user_name: string;
   user_email: string;
+  user_phone: string;
   last_message: string | null;
   last_message_time: string;
   unread_count: number;
@@ -86,7 +87,7 @@ const AdminMessaging = ({ onClose }: AdminMessagingProps) => {
       const userIds = [...new Set(transfers.map(t => t.user_id))];
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('user_id, first_name, last_name, email')
+        .select('user_id, first_name, last_name, email, phone')
         .in('user_id', userIds);
 
       const profileMap = new Map(
@@ -120,6 +121,7 @@ const AdminMessaging = ({ onClose }: AdminMessagingProps) => {
             user_id: transfer.user_id,
             user_name: userName,
             user_email: profile?.email || '',
+            user_phone: profile?.phone || '',
             last_message: messages?.[0]?.message || null,
             last_message_time: messages?.[0]?.created_at || transfer.created_at,
             unread_count: unreadCount || 0,
@@ -233,6 +235,9 @@ const AdminMessaging = ({ onClose }: AdminMessagingProps) => {
           </Button>
           <div className="flex-1">
             <h3 className="font-semibold">{selectedConversation.user_name}</h3>
+            <p className="text-xs text-muted-foreground">
+              {selectedConversation.user_email} • {selectedConversation.user_phone}
+            </p>
             <p className="text-xs text-muted-foreground">
               Transfert: {selectedConversation.reference_number}
             </p>
@@ -362,6 +367,11 @@ const AdminMessaging = ({ onClose }: AdminMessagingProps) => {
                         {format(new Date(conversation.last_message_time), 'dd/MM HH:mm', { locale: fr })}
                       </span>
                     </div>
+                    
+                    <p className="text-xs text-muted-foreground truncate mb-1">
+                      {conversation.user_email}
+                      {conversation.user_phone && ` • ${conversation.user_phone}`}
+                    </p>
                     
                     <div className="flex items-center gap-2 mb-1">
                       <p className="text-xs text-muted-foreground">
