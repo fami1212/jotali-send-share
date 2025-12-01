@@ -15,7 +15,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChat } from '@/contexts/ChatContext';
 import Navbar from '@/components/Navbar';
-import BottomNavigation from '@/components/BottomNavigation';
+import AdminBottomNav from '@/components/AdminBottomNav';
+import AdminMessaging from '@/components/AdminMessaging';
 import AdminStats from '@/components/admin/AdminStats';
 import AdminFilters from '@/components/admin/AdminFilters';
 import ExchangeRateManager from '@/components/admin/ExchangeRateManager';
@@ -93,6 +94,7 @@ const UnifiedAdmin = () => {
   const [proofComment, setProofComment] = useState('');
   const [validationDialogOpen, setValidationDialogOpen] = useState(false);
   const [validationType, setValidationType] = useState<'verify' | 'invalid'>('verify');
+  const [activeTab, setActiveTab] = useState('transfers');
 
   useEffect(() => {
     checkAdminStatus();
@@ -482,11 +484,13 @@ const UnifiedAdmin = () => {
           </p>
         </div>
 
-        {/* Main Tabs */}
-        <Tabs defaultValue="transfers" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 gap-2 bg-white/90 backdrop-blur-sm p-2 rounded-2xl shadow-medium">
+        {/* Main Content */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          {/* Hide TabsList on mobile, show only on desktop */}
+          <TabsList className="hidden md:grid w-full grid-cols-5 gap-2 bg-white/90 backdrop-blur-sm p-2 rounded-2xl shadow-medium">
             <TabsTrigger value="transfers" className="rounded-xl">Transferts</TabsTrigger>
             <TabsTrigger value="proofs" className="rounded-xl">Preuves</TabsTrigger>
+            <TabsTrigger value="messages" className="rounded-xl">Messages</TabsTrigger>
             <TabsTrigger value="stats" className="rounded-xl">Statistiques</TabsTrigger>
             <TabsTrigger value="rates" className="rounded-xl">Taux</TabsTrigger>
           </TabsList>
@@ -820,6 +824,13 @@ const UnifiedAdmin = () => {
             )}
           </TabsContent>
 
+          {/* Messages Tab */}
+          <TabsContent value="messages" className="space-y-6">
+            <div className="max-w-4xl mx-auto">
+              <AdminMessaging />
+            </div>
+          </TabsContent>
+
           {/* Stats Tab */}
           <TabsContent value="stats" className="space-y-6">
             <ProofStatistics />
@@ -1016,7 +1027,7 @@ const UnifiedAdmin = () => {
         </DialogContent>
       </Dialog>
 
-      <BottomNavigation />
+      <AdminBottomNav activeTab={activeTab} onTabChange={setActiveTab} />
     </div>
   );
 };

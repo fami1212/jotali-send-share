@@ -1,6 +1,6 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useChat } from '@/contexts/ChatContext';
-import FloatingChat from './FloatingChat';
+import ClientMessaging from './ClientMessaging';
 import AdminMessaging from './AdminMessaging';
 import { useRealtimeMessages } from '@/hooks/useRealtimeMessages';
 import { useAdminRealtimeMessages } from '@/hooks/useAdminRealtimeMessages';
@@ -115,17 +115,48 @@ const GlobalChat = () => {
     );
   }
 
-  // Regular users get the floating chat with latest transfer
-  if (!displayTransferId) return null;
-
+  // Regular users get the messaging interface with all conversations
   return (
-    <FloatingChat
-      transferId={displayTransferId}
-      isOpen={isOpen}
-      onClose={closeChat}
-      onOpen={() => openChat(displayTransferId)}
-      unreadCount={unreadCount}
-    />
+    <>
+      {/* Floating Button for Users */}
+      {!isOpen && (
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          className="fixed bottom-20 md:bottom-6 right-6 z-50"
+        >
+          <Button
+            onClick={() => openChat('')}
+            size="lg"
+            className="h-14 w-14 rounded-full shadow-lg relative"
+          >
+            <MessageCircle className="w-6 h-6" />
+            {userUnreadCount > 0 && (
+              <Badge 
+                variant="destructive" 
+                className="absolute -top-2 -right-2 h-6 w-6 flex items-center justify-center p-0 rounded-full"
+              >
+                {userUnreadCount > 9 ? '9+' : userUnreadCount}
+              </Badge>
+            )}
+          </Button>
+        </motion.div>
+      )}
+
+      {/* Client Messaging Window */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            className="fixed bottom-20 md:bottom-6 right-6 z-50 w-[90vw] md:w-[450px] max-w-[450px] shadow-2xl rounded-lg overflow-hidden"
+          >
+            <ClientMessaging onClose={closeChat} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 };
 
