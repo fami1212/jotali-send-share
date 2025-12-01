@@ -130,7 +130,7 @@ const ModernTransferForm = () => {
 
     try {
       const { data: refData } = await supabase.rpc('generate_reference_number');
-      const rate = conversionType === 'mad_to_cfa' ? exchangeRates.mad_to_cfa : exchangeRates.cfa_to_mad;
+      const rate = conversionType === 'mad_to_cfa' ? exchangeRates.mad_to_cfa : 62.5;
       const fees = calculateFees();
       const referenceNumber = refData || `TR${Date.now()}`;
 

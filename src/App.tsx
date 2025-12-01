@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { AuthProvider } from "./contexts/AuthContext";
+import { ChatProvider } from "./contexts/ChatContext";
+import GlobalChat from "./components/GlobalChat";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
 import Index from "./pages/Index";
@@ -30,10 +32,12 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
       <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
+        <ChatProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <GlobalChat />
+            <BrowserRouter>
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
@@ -95,6 +99,7 @@ const App = () => (
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
+        </ChatProvider>
     </AuthProvider>
   </ThemeProvider>
   </QueryClientProvider>
