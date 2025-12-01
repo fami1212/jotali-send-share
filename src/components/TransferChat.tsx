@@ -4,12 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, Paperclip, Download, X } from "lucide-react";
+import { Send, Paperclip, Download, X, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface Message {
   id: string;
@@ -245,6 +246,63 @@ const TransferChat = ({ transferId, onClose }: TransferChatProps) => {
               <X className="w-4 h-4" />
             </Button>
           </div>
+        )}
+
+        {/* Quick replies for admin */}
+        {isAdmin && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="w-full">
+                <Zap className="w-4 h-4 mr-2" />
+                Réponses rapides
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80">
+              <div className="space-y-2">
+                <p className="text-sm font-medium mb-2">Sélectionner un message:</p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start text-left h-auto py-2"
+                  onClick={() => setNewMessage("Veuillez nous fournir une preuve de paiement pour votre transfert.")}
+                >
+                  📸 Demande de preuve
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start text-left h-auto py-2"
+                  onClick={() => setNewMessage("Votre transfert a été validé et sera traité dans les plus brefs délais.")}
+                >
+                  ✅ Validation du transfert
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start text-left h-auto py-2"
+                  onClick={() => setNewMessage("Voici le numéro d'envoi pour votre retrait : ")}
+                >
+                  🔢 Numéro d'envoi
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start text-left h-auto py-2"
+                  onClick={() => setNewMessage("Votre preuve de paiement a été reçue et est en cours de vérification.")}
+                >
+                  ⏳ Preuve en vérification
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start text-left h-auto py-2"
+                  onClick={() => setNewMessage("Nous avons besoin d'informations complémentaires concernant votre transfert. Merci de nous contacter.")}
+                >
+                  ℹ️ Infos complémentaires
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
         )}
 
         <div className="flex gap-2">
