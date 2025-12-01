@@ -18,6 +18,7 @@ import Navbar from '@/components/Navbar';
 import BottomNavigation from '@/components/BottomNavigation';
 import UploadProofDialog from '@/components/UploadProofDialog';
 import { ProofComments } from '@/components/ProofComments';
+import TransferChat from '@/components/TransferChat';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -62,6 +63,8 @@ const History = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [showUploadProofDialog, setShowUploadProofDialog] = useState(false);
   const [selectedTransferIdForProof, setSelectedTransferIdForProof] = useState<string | undefined>();
+  const [showChat, setShowChat] = useState(false);
+  const [chatTransferId, setChatTransferId] = useState<string | undefined>();
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -773,21 +776,35 @@ const History = () => {
                 <ProofComments transferId={selectedTransfer.id} isAdmin={false} />
               </div>
               
-              <div className="flex gap-3">
-                <Button 
-                  onClick={() => {
-                    navigate(`/upload-proof?transfer=${selectedTransfer.id}`);
-                    setSelectedTransfer(null);
-                  }}
-                  variant="outline"
-                  className="flex-1 border-2 border-primary/20 text-primary hover:bg-primary/5 rounded-xl"
-                >
-                  <Upload className="w-4 h-4 mr-2" />
-                  Ajouter preuve
-                </Button>
+              <div className="flex flex-col gap-3">
+                <div className="flex gap-3">
+                  <Button 
+                    onClick={() => {
+                      navigate(`/upload-proof?transfer=${selectedTransfer.id}`);
+                      setSelectedTransfer(null);
+                    }}
+                    variant="outline"
+                    className="flex-1 border-2 border-primary/20 text-primary hover:bg-primary/5 rounded-xl"
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Ajouter preuve
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      setChatTransferId(selectedTransfer.id);
+                      setShowChat(true);
+                      setSelectedTransfer(null);
+                    }}
+                    variant="outline"
+                    className="flex-1 border-2 border-blue-200 text-blue-600 hover:bg-blue-50 rounded-xl"
+                  >
+                    <MessageSquare className="w-4 h-4 mr-2" />
+                    Messagerie
+                  </Button>
+                </div>
                 <Button 
                   onClick={() => setSelectedTransfer(null)}
-                  className="flex-1 bg-gradient-primary hover:opacity-90 text-white rounded-xl"
+                  className="w-full bg-gradient-primary hover:opacity-90 text-white rounded-xl"
                 >
                   Fermer
                 </Button>
@@ -807,6 +824,21 @@ const History = () => {
           setSelectedTransferIdForProof(undefined);
         }}
       />
+
+      {/* Chat Dialog */}
+      <Dialog open={showChat} onOpenChange={setShowChat}>
+        <DialogContent className="max-w-3xl max-h-[90vh] p-0">
+          {chatTransferId && (
+            <TransferChat 
+              transferId={chatTransferId}
+              onClose={() => {
+                setShowChat(false);
+                setChatTransferId(undefined);
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Bottom Navigation */}
       <BottomNavigation />
