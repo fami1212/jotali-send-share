@@ -1,19 +1,19 @@
 import { useState, useEffect } from 'react';
-import { User, Mail, Phone, MapPin, Camera, Shield } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Camera, Shield, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import Navbar from '@/components/Navbar';
 import BottomNavigation from '@/components/BottomNavigation';
+import { useNavigate } from 'react-router-dom';
 
 interface Profile {
-  id: string;
   first_name: string;
   last_name: string;
   phone: string;
@@ -22,20 +22,29 @@ interface Profile {
   is_verified: boolean;
 }
 
+const countries = [
+  { value: 'Morocco', label: 'Maroc' },
+  { value: 'Senegal', label: 'Sénégal' },
+  { value: 'Mali', label: 'Mali' },
+  { value: 'Burkina Faso', label: 'Burkina Faso' },
+  { value: 'Ivory Coast', label: 'Côte d\'Ivoire' },
+  { value: 'Niger', label: 'Niger' },
+  { value: 'Benin', label: 'Bénin' },
+  { value: 'Togo', label: 'Togo' }
+];
+
 const Profile = () => {
-  const { user } = useAuth();
-  const { toast } = useToast();
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
-  // Form state
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
   const [country, setCountry] = useState('');
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
   useEffect(() => {
     loadProfile();
@@ -59,7 +68,7 @@ const Profile = () => {
         setCountry(data.country || '');
       }
     } catch (error) {
-      console.error('Error loading profile:', error);
+      console.error('Error:', error);
     } finally {
       setIsLoadingProfile(false);
     }
@@ -67,70 +76,24 @@ const Profile = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!user) return;
 
     setIsLoading(true);
 
     try {
-      const profileData = {
-        user_id: user.id,
-        first_name: firstName,
-        last_name: lastName,
-        phone,
-        country,
-      };
-
       const { error } = await supabase
         .from('profiles')
-        .update({
-          first_name: firstName,
-          last_name: lastName,  
-          phone,
-          country,
-        })
+        .update({ first_name: firstName, last_name: lastName, phone, country })
         .eq('user_id', user.id);
 
       if (error) throw error;
-
-      toast({
-        title: "Profil mis à jour",
-        description: "Vos informations ont été sauvegardées avec succès",
-      });
-
+      toast.success("Profil mis à jour");
       loadProfile();
     } catch (error: any) {
-      console.error('Error updating profile:', error);
-      toast({
-        title: "Erreur",
-        description: error.message || "Erreur lors de la mise à jour du profil",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Erreur lors de la mise à jour");
     }
 
     setIsLoading(false);
-  };
-
-  const uploadAvatar = async (file: File) => {
-    if (!user) return null;
-
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${user.id}/avatar.${fileExt}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('avatars')
-      .upload(fileName, file, { upsert: true });
-
-    if (uploadError) {
-      console.error('Error uploading avatar:', uploadError);
-      return null;
-    }
-
-    const { data } = supabase.storage
-      .from('avatars')
-      .getPublicUrl(fileName);
-
-    return data.publicUrl;
   };
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -140,257 +103,185 @@ const Profile = () => {
     setIsUploadingAvatar(true);
 
     try {
-      const avatarUrl = await uploadAvatar(file);
-      
-      if (avatarUrl) {
-        const { error } = await supabase
-          .from('profiles')
-          .update({ avatar_url: avatarUrl })
-          .eq('user_id', user.id);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/avatar.${fileExt}`;
 
-        if (error) throw error;
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { upsert: true });
 
-        toast({
-          title: "Photo de profil mise à jour",
-          description: "Votre nouvelle photo a été sauvegardée",
-        });
+      if (uploadError) throw uploadError;
 
-        loadProfile();
-      }
+      const { data } = supabase.storage.from('avatars').getPublicUrl(fileName);
+
+      await supabase
+        .from('profiles')
+        .update({ avatar_url: data.publicUrl })
+        .eq('user_id', user.id);
+
+      toast.success("Photo mise à jour");
+      loadProfile();
     } catch (error: any) {
-      console.error('Error updating avatar:', error);
-      toast({
-        title: "Erreur",
-        description: "Erreur lors de la mise à jour de la photo",
-        variant: "destructive",
-      });
+      toast.error("Erreur lors de l'upload");
     }
 
     setIsUploadingAvatar(false);
   };
 
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/auth');
+  };
+
   if (isLoadingProfile) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-        <div className="hidden md:block">
-          <Navbar />
-        </div>
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-2 text-slate-600">Chargement du profil...</p>
-          </div>
-        </div>
-        <BottomNavigation />
+      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      <div className="hidden md:block">
-        <Navbar />
-      </div>
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white pb-24">
+      <div className="hidden md:block"><Navbar /></div>
       
-      <div className="container mx-auto px-4 py-8 pb-24">
-        <div className="max-w-2xl mx-auto">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-slate-800 mb-2">
-              Mon profil 👤
-            </h1>
-            <p className="text-slate-600">
-              Gérez vos informations personnelles et vos préférences
-            </p>
-          </div>
-
-          <div className="space-y-6">
-            {/* Avatar Section */}
-            <Card className="p-6 bg-white/95 backdrop-blur-sm shadow-medium border-0 rounded-2xl">
-              <div className="flex items-center space-x-6">
-                <div className="relative">
-                  <Avatar className="w-24 h-24 shadow-medium">
-                    <AvatarImage src={profile?.avatar_url} />
-                    <AvatarFallback className="text-2xl bg-gradient-primary text-white">
-                      {firstName.charAt(0)}{lastName.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="absolute -bottom-2 -right-2">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleAvatarChange}
-                      className="hidden"
-                      id="avatar-upload"
-                    />
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="rounded-full w-8 h-8 p-0"
-                      onClick={() => document.getElementById('avatar-upload')?.click()}
-                      disabled={isUploadingAvatar}
-                    >
-                      {isUploadingAvatar ? (
-                        <div className="animate-spin rounded-full h-3 w-3 border-b border-primary"></div>
-                      ) : (
-                        <Camera className="w-4 h-4" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-xl font-semibold text-slate-800">
-                    {firstName} {lastName}
-                  </h3>
-                  <p className="text-slate-600">{user?.email}</p>
-                  
-                  <div className="flex items-center mt-2">
-                    {profile?.is_verified ? (
-                      <div className="flex items-center text-success">
-                        <Shield className="w-4 h-4 mr-1" />
-                        <span className="text-sm">Compte vérifié</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center text-warning">
-                        <Shield className="w-4 h-4 mr-1" />
-                        <span className="text-sm">Compte non vérifié</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </Card>
-
-            {/* Profile Form */}
-            <Card className="p-6 bg-white/95 backdrop-blur-sm shadow-medium border-0 rounded-2xl">
-              <h2 className="text-xl font-semibold mb-4 text-slate-800">Informations personnelles</h2>
-              
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="firstName" className="text-slate-700">Prénom</Label>
-                      <div className="relative">
-                        <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-500" />
-                        <Input
-                          id="firstName"
-                          value={firstName}
-                          onChange={(e) => setFirstName(e.target.value)}
-                          className="pl-10 border-2 border-slate-200 bg-white text-slate-800"
-                          placeholder="Votre prénom"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="lastName" className="text-slate-700">Nom</Label>
-                      <div className="relative">
-                        <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-500" />
-                        <Input
-                          id="lastName"
-                          value={lastName}
-                          onChange={(e) => setLastName(e.target.value)}
-                          className="pl-10 border-2 border-slate-200 bg-white text-slate-800"
-                          placeholder="Votre nom"
-                        />
-                      </div>
-                    </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      id="email"
-                      value={user?.email || ''}
-                      disabled
-                      className="pl-10 bg-muted"
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    L'email ne peut pas être modifié
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Téléphone</Label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      id="phone"
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      className="pl-10"
-                      placeholder="+212 6 XX XX XX XX"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="country">Pays</Label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
-                    <Select value={country} onValueChange={setCountry}>
-                      <SelectTrigger className="pl-10">
-                        <SelectValue placeholder="Sélectionner votre pays" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Morocco">Maroc</SelectItem>
-                        <SelectItem value="Senegal">Sénégal</SelectItem>
-                        <SelectItem value="Mali">Mali</SelectItem>
-                        <SelectItem value="Burkina Faso">Burkina Faso</SelectItem>
-                        <SelectItem value="Ivory Coast">Côte d'Ivoire</SelectItem>
-                        <SelectItem value="Niger">Niger</SelectItem>
-                        <SelectItem value="Benin">Bénin</SelectItem>
-                        <SelectItem value="Togo">Togo</SelectItem>
-                        <SelectItem value="Guinea-Bissau">Guinée-Bissau</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <Button type="submit" disabled={isLoading} className="w-full bg-gradient-primary hover:opacity-90 text-white shadow-medium">
-                  {isLoading ? "Mise à jour..." : "Sauvegarder les modifications"}
-                </Button>
-              </form>
-            </Card>
-
-            {/* Security Section */}
-            <Card className="p-6 bg-white/95 backdrop-blur-sm shadow-medium border-0 rounded-2xl">
-              <h2 className="text-xl font-semibold mb-4 text-slate-800">Sécurité</h2>
-              
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200">
-                  <div>
-                    <h4 className="font-medium text-slate-800">Mot de passe</h4>
-                    <p className="text-sm text-slate-600">
-                      Dernière modification il y a plus de 30 jours
-                    </p>
-                  </div>
-                  <Button variant="outline" className="border-2 border-slate-200 text-slate-600 hover:border-primary hover:text-primary">
-                    Changer le mot de passe
-                  </Button>
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200">
-                  <div>
-                    <h4 className="font-medium text-slate-800">Authentification à deux facteurs</h4>
-                    <p className="text-sm text-slate-600">
-                      Sécurisez votre compte avec 2FA
-                    </p>
-                  </div>
-                  <Button variant="outline" className="border-2 border-slate-200 text-slate-600 hover:border-primary hover:text-primary">
-                    Activer 2FA
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          </div>
+      <div className="container mx-auto px-4 py-6 max-w-lg">
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-slate-900">Mon profil</h1>
+          <p className="text-slate-500 text-sm">Gérez vos informations</p>
         </div>
+
+        {/* Avatar Card */}
+        <Card className="p-6 mb-6">
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <Avatar className="w-20 h-20">
+                <AvatarImage src={profile?.avatar_url} />
+                <AvatarFallback className="bg-blue-500 text-white text-xl">
+                  {firstName.charAt(0)}{lastName.charAt(0)}
+                </AvatarFallback>
+              </Avatar>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarChange}
+                className="hidden"
+                id="avatar-upload"
+              />
+              <Button
+                size="icon"
+                variant="outline"
+                className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full"
+                onClick={() => document.getElementById('avatar-upload')?.click()}
+                disabled={isUploadingAvatar}
+              >
+                {isUploadingAvatar ? (
+                  <div className="animate-spin rounded-full h-3 w-3 border-b border-blue-600" />
+                ) : (
+                  <Camera className="w-4 h-4" />
+                )}
+              </Button>
+            </div>
+
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-slate-900">
+                {firstName} {lastName}
+              </h3>
+              <p className="text-sm text-slate-500">{user?.email}</p>
+              
+              <div className="flex items-center gap-1 mt-2">
+                <Shield className={`w-4 h-4 ${profile?.is_verified ? 'text-green-500' : 'text-amber-500'}`} />
+                <span className={`text-xs ${profile?.is_verified ? 'text-green-600' : 'text-amber-600'}`}>
+                  {profile?.is_verified ? 'Vérifié' : 'Non vérifié'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Form */}
+        <Card className="p-6 mb-6">
+          <h2 className="font-semibold text-slate-900 mb-4">Informations personnelles</h2>
+          
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Prénom</Label>
+                <Input
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="Prénom"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Nom</Label>
+                <Input
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Nom"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input value={user?.email || ''} disabled className="pl-10 bg-slate-50" />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Téléphone</Label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+212 6 XX XX XX XX"
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Pays</Label>
+              <div className="relative">
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 z-10" />
+                <Select value={country} onValueChange={setCountry}>
+                  <SelectTrigger className="pl-10">
+                    <SelectValue placeholder="Sélectionner" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {countries.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <Button type="submit" disabled={isLoading} className="w-full">
+              {isLoading ? "Mise à jour..." : "Sauvegarder"}
+            </Button>
+          </form>
+        </Card>
+
+        {/* Logout */}
+        <Card className="p-4">
+          <Button 
+            variant="outline" 
+            className="w-full text-red-500 hover:text-red-600 hover:bg-red-50"
+            onClick={handleLogout}
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Se déconnecter
+          </Button>
+        </Card>
       </div>
-      
-      {/* Bottom Navigation */}
+
       <BottomNavigation />
     </div>
   );
