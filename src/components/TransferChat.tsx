@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, Paperclip, Download, X, Zap, Check, CheckCheck, Image as ImageIcon, Play, Pause, Mic, Square } from "lucide-react";
+import { Send, Paperclip, Download, X, Zap, Check, CheckCheck, Image as ImageIcon, Play, Pause, Mic, Square, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -11,6 +11,7 @@ import { fr } from "date-fns/locale";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { motion, AnimatePresence } from "framer-motion";
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "@/components/ui/context-menu";
 
 interface Message {
   id: string;
@@ -65,7 +66,6 @@ const TransferChat = ({ transferId, onClose, isAdmin: isAdminProp, embedded = fa
     checkAdmin();
   }, [user, isAdminProp]);
 
-  // Typing indicator channel
   useEffect(() => {
     if (!transferId || !user?.id) return;
 
@@ -99,27 +99,26 @@ const TransferChat = ({ transferId, onClose, isAdmin: isAdminProp, embedded = fa
         .channel(`messages:${transferId}`)
         .on(
           'postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'messages', filter: `transfer_id=eq.${transferId}` },
+          { event: '*', schema: 'public', table: 'messages', filter: `transfer_id=eq.${transferId}` },
           (payload) => {
-            const newMsg = payload.new as Message;
-            setMessages(prev => {
-              if (prev.find(m => m.id === newMsg.id)) return prev;
-              const optimisticIndex = prev.findIndex(m => m.id.startsWith('temp-') && m.sender_id === newMsg.sender_id);
-              if (optimisticIndex !== -1) {
-                const updated = [...prev];
-                updated[optimisticIndex] = newMsg;
-                return updated;
-              }
-              return [...prev, newMsg];
-            });
-            if (newMsg.sender_id !== user?.id) markMessagesAsRead();
-          }
-        )
-        .on(
-          'postgres_changes',
-          { event: 'UPDATE', schema: 'public', table: 'messages', filter: `transfer_id=eq.${transferId}` },
-          (payload) => {
-            setMessages(prev => prev.map(m => m.id === payload.new.id ? payload.new as Message : m));
+            if (payload.eventType === 'INSERT') {
+              const newMsg = payload.new as Message;
+              setMessages(prev => {
+                if (prev.find(m => m.id === newMsg.id)) return prev;
+                const optimisticIndex = prev.findIndex(m => m.id.startsWith('temp-') && m.sender_id === newMsg.sender_id);
+                if (optimisticIndex !== -1) {
+                  const updated = [...prev];
+                  updated[optimisticIndex] = newMsg;
+                  return updated;
+                }
+                return [...prev, newMsg];
+              });
+              if (newMsg.sender_id !== user?.id) markMessagesAsRead();
+            } else if (payload.eventType === 'UPDATE') {
+              setMessages(prev => prev.map(m => m.id === payload.new.id ? payload.new as Message : m));
+            } else if (payload.eventType === 'DELETE') {
+              setMessages(prev => prev.filter(m => m.id !== payload.old.id));
+            }
           }
         )
         .subscribe();
@@ -168,6 +167,16 @@ const TransferChat = ({ transferId, onClose, isAdmin: isAdminProp, embedded = fa
     if (!transferId || !user?.id) return;
     const channel = supabase.channel(`typing:${transferId}`);
     await channel.send({ type: 'broadcast', event: 'stop_typing', payload: { user_id: user.id } });
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    const { error } = await supabase.from('messages').delete().eq('id', messageId);
+    if (error) {
+      toast.error("Erreur lors de la suppression");
+    } else {
+      setMessages(prev => prev.filter(m => m.id !== messageId));
+      toast.success("Message supprimé");
+    }
   };
 
   const handleSendMessage = async (audioBlob?: Blob) => {
@@ -253,6 +262,7 @@ const TransferChat = ({ transferId, onClose, isAdmin: isAdminProp, embedded = fa
   };
 
   const handleQuickReply = (text: string) => {
+    console.log("Quick reply selected:", text);
     setNewMessage(text);
     setQuickReplyOpen(false);
   };
@@ -263,11 +273,10 @@ const TransferChat = ({ transferId, onClose, isAdmin: isAdminProp, embedded = fa
     else sendStopTyping();
   };
 
-  // Voice recording
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
 
@@ -325,21 +334,45 @@ const TransferChat = ({ transferId, onClose, isAdmin: isAdminProp, embedded = fa
   };
 
   const messageGroups = groupMessagesByDate();
-  const isImageFile = (url: string) => /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
-  const isAudioFile = (url: string) => /\.(webm|mp3|wav|ogg|m4a)$/i.test(url);
+  const isImageFile = (url: string) => /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(url) || url.includes('image');
+  const isAudioFile = (url: string) => /\.(webm|mp3|wav|ogg|m4a|aac)$/i.test(url);
 
   const toggleAudioPlayback = (messageId: string, audioUrl: string) => {
+    console.log("Toggle audio:", messageId, audioUrl);
+    
     if (playingAudio === messageId) {
-      audioRefs.current[messageId]?.pause();
+      if (audioRefs.current[messageId]) {
+        audioRefs.current[messageId].pause();
+        audioRefs.current[messageId].currentTime = 0;
+      }
       setPlayingAudio(null);
     } else {
-      if (playingAudio && audioRefs.current[playingAudio]) audioRefs.current[playingAudio].pause();
-      if (!audioRefs.current[messageId]) {
-        audioRefs.current[messageId] = new Audio(audioUrl);
-        audioRefs.current[messageId].onended = () => setPlayingAudio(null);
+      // Stop any currently playing audio
+      if (playingAudio && audioRefs.current[playingAudio]) {
+        audioRefs.current[playingAudio].pause();
+        audioRefs.current[playingAudio].currentTime = 0;
       }
-      audioRefs.current[messageId].play();
-      setPlayingAudio(messageId);
+      
+      // Create new audio element if it doesn't exist
+      if (!audioRefs.current[messageId]) {
+        const audio = new Audio(audioUrl);
+        audio.onended = () => {
+          setPlayingAudio(null);
+        };
+        audio.onerror = (e) => {
+          console.error("Audio error:", e);
+          toast.error("Erreur lors de la lecture audio");
+          setPlayingAudio(null);
+        };
+        audioRefs.current[messageId] = audio;
+      }
+      
+      audioRefs.current[messageId].play()
+        .then(() => setPlayingAudio(messageId))
+        .catch(err => {
+          console.error("Play error:", err);
+          toast.error("Erreur lors de la lecture");
+        });
     }
   };
 
@@ -351,6 +384,115 @@ const TransferChat = ({ transferId, onClose, isAdmin: isAdminProp, embedded = fa
     { emoji: "ℹ️", text: "Nous avons besoin d'informations complémentaires." },
     { emoji: "💰", text: "Le montant a été envoyé. Vous pouvez le retirer." }
   ];
+
+  const renderMessage = (msg: Message) => {
+    const isMe = msg.sender_id === user?.id;
+    const isOptimistic = msg.id.startsWith('temp-');
+    const canDelete = isMe || isAdmin;
+    
+    const messageContent = (
+      <motion.div
+        key={msg.id}
+        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+        animate={{ opacity: isOptimistic ? 0.7 : 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.2 }}
+        className={`flex mb-1 ${isMe ? 'justify-end' : 'justify-start'}`}
+      >
+        <div className={`relative max-w-[75%] px-3 py-2 rounded-lg shadow-sm ${isMe ? 'bg-emerald-100 rounded-tr-none' : 'bg-white rounded-tl-none'}`}>
+          <div 
+            className={`absolute top-0 w-3 h-3 ${isMe ? 'right-0 -mr-1.5 bg-emerald-100' : 'left-0 -ml-1.5 bg-white'}`}
+            style={{ clipPath: isMe ? 'polygon(0 0, 100% 0, 0 100%)' : 'polygon(100% 0, 0 0, 100% 100%)' }}
+          />
+          
+          {/* Image */}
+          {msg.file_url && isImageFile(msg.file_url) && (
+            <div className="mb-2">
+              <img 
+                src={msg.file_url} 
+                alt="attachment" 
+                className="max-w-full max-h-60 rounded-lg cursor-pointer hover:opacity-90 transition-opacity object-cover"
+                onClick={() => setPreviewImage(msg.file_url)}
+                onError={(e) => {
+                  console.error("Image load error:", msg.file_url);
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            </div>
+          )}
+
+          {/* Audio */}
+          {msg.file_url && isAudioFile(msg.file_url) && (
+            <div className="flex items-center gap-2 p-2 bg-slate-100 rounded-lg mb-1 min-w-[150px]">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white shrink-0"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleAudioPlayback(msg.id, msg.file_url!);
+                }}
+              >
+                {playingAudio === msg.id ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+              </Button>
+              <div className="flex-1">
+                <div className="h-1 bg-slate-300 rounded-full overflow-hidden">
+                  <motion.div 
+                    className="h-full bg-emerald-500 rounded-full"
+                    initial={{ width: 0 }}
+                    animate={{ width: playingAudio === msg.id ? '100%' : '0%' }}
+                    transition={{ duration: 5 }}
+                  />
+                </div>
+              </div>
+              <span className="text-xs text-slate-500">🎤</span>
+            </div>
+          )}
+          
+          {/* Other files */}
+          {msg.file_url && !isImageFile(msg.file_url) && !isAudioFile(msg.file_url) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start mb-1 bg-slate-100 hover:bg-slate-200"
+              onClick={() => window.open(msg.file_url!, '_blank')}
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Fichier joint
+            </Button>
+          )}
+          
+          {/* Text */}
+          {msg.message && <p className="text-sm text-slate-800 break-words whitespace-pre-wrap">{msg.message}</p>}
+          
+          {/* Time and status */}
+          <div className={`flex items-center gap-1 mt-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
+            <span className="text-[10px] text-slate-500">{formatTime(msg.created_at)}</span>
+            {isMe && !isOptimistic && (msg.read ? <CheckCheck className="w-3.5 h-3.5 text-blue-500" /> : <Check className="w-3.5 h-3.5 text-slate-400" />)}
+            {isMe && isOptimistic && <div className="w-3 h-3 border border-slate-400 border-t-transparent rounded-full animate-spin" />}
+          </div>
+        </div>
+      </motion.div>
+    );
+
+    if (canDelete && !isOptimistic) {
+      return (
+        <ContextMenu key={msg.id}>
+          <ContextMenuTrigger>{messageContent}</ContextMenuTrigger>
+          <ContextMenuContent>
+            <ContextMenuItem 
+              className="text-red-600 focus:text-red-600"
+              onClick={() => handleDeleteMessage(msg.id)}
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Supprimer
+            </ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
+      );
+    }
+
+    return messageContent;
+  };
 
   return (
     <>
@@ -392,80 +534,7 @@ const TransferChat = ({ transferId, onClose, isAdmin: isAdminProp, embedded = fa
                 </div>
                 
                 <AnimatePresence>
-                  {msgs.map((msg) => {
-                    const isMe = msg.sender_id === user?.id;
-                    const isOptimistic = msg.id.startsWith('temp-');
-                    
-                    return (
-                      <motion.div
-                        key={msg.id}
-                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                        animate={{ opacity: isOptimistic ? 0.7 : 1, y: 0, scale: 1 }}
-                        transition={{ duration: 0.2 }}
-                        className={`flex mb-1 ${isMe ? 'justify-end' : 'justify-start'}`}
-                      >
-                        <div className={`relative max-w-[75%] px-3 py-2 rounded-lg shadow-sm ${isMe ? 'bg-emerald-100 rounded-tr-none' : 'bg-white rounded-tl-none'}`}>
-                          <div 
-                            className={`absolute top-0 w-3 h-3 ${isMe ? 'right-0 -mr-1.5 bg-emerald-100' : 'left-0 -ml-1.5 bg-white'}`}
-                            style={{ clipPath: isMe ? 'polygon(0 0, 100% 0, 0 100%)' : 'polygon(100% 0, 0 0, 100% 100%)' }}
-                          />
-                          
-                          {msg.file_url && isImageFile(msg.file_url) && (
-                            <img 
-                              src={msg.file_url} 
-                              alt="attachment" 
-                              className="max-w-full rounded-lg mb-1 cursor-pointer hover:opacity-90 transition-opacity"
-                              onClick={() => setPreviewImage(msg.file_url)}
-                            />
-                          )}
-
-                          {msg.file_url && isAudioFile(msg.file_url) && (
-                            <div className="flex items-center gap-2 p-2 bg-slate-100 rounded-lg mb-1 min-w-[150px]">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white shrink-0"
-                                onClick={() => toggleAudioPlayback(msg.id, msg.file_url!)}
-                              >
-                                {playingAudio === msg.id ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                              </Button>
-                              <div className="flex-1">
-                                <div className="h-1 bg-slate-300 rounded-full overflow-hidden">
-                                  <motion.div 
-                                    className="h-full bg-emerald-500 rounded-full"
-                                    initial={{ width: 0 }}
-                                    animate={{ width: playingAudio === msg.id ? '100%' : '0%' }}
-                                    transition={{ duration: 5 }}
-                                  />
-                                </div>
-                              </div>
-                              <span className="text-xs text-slate-500">🎤</span>
-                            </div>
-                          )}
-                          
-                          {msg.file_url && !isImageFile(msg.file_url) && !isAudioFile(msg.file_url) && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="w-full justify-start mb-1 bg-slate-100 hover:bg-slate-200"
-                              onClick={() => window.open(msg.file_url!, '_blank')}
-                            >
-                              <Download className="w-4 h-4 mr-2" />
-                              Fichier joint
-                            </Button>
-                          )}
-                          
-                          {msg.message && <p className="text-sm text-slate-800 break-words whitespace-pre-wrap">{msg.message}</p>}
-                          
-                          <div className={`flex items-center gap-1 mt-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
-                            <span className="text-[10px] text-slate-500">{formatTime(msg.created_at)}</span>
-                            {isMe && !isOptimistic && (msg.read ? <CheckCheck className="w-3.5 h-3.5 text-blue-500" /> : <Check className="w-3.5 h-3.5 text-slate-400" />)}
-                            {isMe && isOptimistic && <div className="w-3 h-3 border border-slate-400 border-t-transparent rounded-full animate-spin" />}
-                          </div>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
+                  {msgs.map(renderMessage)}
                 </AnimatePresence>
               </div>
             ))}
@@ -517,19 +586,22 @@ const TransferChat = ({ transferId, onClose, isAdmin: isAdminProp, embedded = fa
                   Réponses rapides
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-80 p-2" align="start" side="top">
+              <PopoverContent className="w-80 p-2" align="start" side="top" sideOffset={5}>
                 <div className="space-y-1">
                   <p className="text-sm font-medium mb-2 text-slate-700 px-2">Sélectionner un message :</p>
                   {quickReplies.map((item, i) => (
-                    <button
+                    <div
                       key={i}
-                      className="w-full flex items-center justify-start text-left h-auto py-2 px-2 text-sm hover:bg-emerald-50 rounded-md transition-colors"
-                      type="button"
-                      onClick={() => handleQuickReply(item.text)}
+                      className="w-full flex items-center justify-start text-left h-auto py-2 px-2 text-sm hover:bg-emerald-50 rounded-md transition-colors cursor-pointer"
+                      onClick={() => {
+                        handleQuickReply(item.text);
+                      }}
+                      role="button"
+                      tabIndex={0}
                     >
-                      <span className="mr-2">{item.emoji}</span>
-                      <span className="truncate">{item.text}</span>
-                    </button>
+                      <span className="mr-2 shrink-0">{item.emoji}</span>
+                      <span className="line-clamp-2">{item.text}</span>
+                    </div>
                   ))}
                 </div>
               </PopoverContent>
