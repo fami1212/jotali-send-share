@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowDown, Plus, Smartphone, Building2, ArrowLeft, Check, Receipt, Info as InfoIcon } from 'lucide-react';
+import { ArrowRight, Plus, Smartphone, Building2, ArrowLeft, Check, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -40,6 +40,7 @@ const ModernTransferForm = () => {
   const [recipients, setRecipients] = useState<Recipient[]>([]);
   const [notes, setNotes] = useState("");
   const [showAddRecipient, setShowAddRecipient] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     loadRecipients();
@@ -50,10 +51,8 @@ const ModernTransferForm = () => {
     if (receiveAmount && exchangeRates) {
       let send = 0;
       if (conversionType === 'mad_to_cfa') {
-        // MAD → CFA: diviser par le taux (0.0166667) = multiplier par 60
         send = parseFloat(receiveAmount) * exchangeRates.cfa_to_mad;
       } else {
-        // CFA → MAD: multiplier par 62.5 (inclut les frais)
         send = parseFloat(receiveAmount) * 62.5;
       }
       setSendAmount(send.toFixed(2));
@@ -84,49 +83,56 @@ const ModernTransferForm = () => {
     }
   };
 
+  // Calcul des frais: MAD→CFA uniquement
+  // Sénégal = 1%, autres pays Wave/OM = 1.5%, virement = 0%
   const calculateFees = () => {
     if (!sendAmount) return 0;
     const baseAmount = parseFloat(sendAmount);
     
-    // Pour CFA→MAD, le taux de 62.5 inclut déjà les frais, donc pas de frais supplémentaires
-    if (conversionType === 'cfa_to_mad') {
-      return 0;
-    }
+    // CFA→MAD: le taux 62.5 inclut déjà les frais
+    if (conversionType === 'cfa_to_mad') return 0;
     
-    // Pour MAD→CFA: Sénégal = 1%, autres pays Wave/OM = 1.5%, virement = 0%
+    // MAD→CFA: selon pays et méthode
+    if (transferMethod === 'bank_transfer') return 0;
+    
     if (selectedRecipient?.country === 'Sénégal') {
-      return baseAmount * 0.01; // 1%
+      return baseAmount * 0.01; // 1% Sénégal
     }
     
-    if (transferMethod === 'wave' || transferMethod === 'orange_money') {
-      return baseAmount * 0.015; // 1.5%
-    }
-    
-    return 0; // Virement bancaire gratuit
+    return baseAmount * 0.015; // 1.5% autres pays
+  };
+
+  const getFeeLabel = () => {
+    if (conversionType === 'cfa_to_mad') return 'Inclus dans le taux';
+    if (transferMethod === 'bank_transfer') return 'Gratuit';
+    if (selectedRecipient?.country === 'Sénégal') return '1%';
+    return '1.5%';
   };
 
   const handleSubmit = async () => {
     if (!user) {
-      toast.error("Vous devez être connecté pour effectuer un transfert");
+      toast.error("Connectez-vous pour continuer");
       return;
     }
 
     if (!receiveAmount || parseFloat(receiveAmount) <= 0) {
-      toast.error("Veuillez entrer un montant valide");
+      toast.error("Entrez un montant valide");
       return;
     }
 
     const transferType = conversionType === 'mad_to_cfa' ? 'transfer' : 'withdrawal';
     
     if (transferType === 'transfer' && !selectedRecipient) {
-      toast.error("Veuillez sélectionner un bénéficiaire");
+      toast.error("Sélectionnez un bénéficiaire");
       return;
     }
 
     if (!transferMethod) {
-      toast.error("Veuillez sélectionner un moyen de paiement");
+      toast.error("Sélectionnez un moyen de paiement");
       return;
     }
+
+    setIsSubmitting(true);
 
     try {
       const { data: refData } = await supabase.rpc('generate_reference_number');
@@ -134,7 +140,7 @@ const ModernTransferForm = () => {
       const fees = calculateFees();
       const referenceNumber = refData || `TR${Date.now()}`;
 
-      const { data: transfer, error } = await supabase
+      const { error } = await supabase
         .from('transfers')
         .insert({
           user_id: user.id,
@@ -151,189 +157,207 @@ const ModernTransferForm = () => {
           recipient_id: selectedRecipient?.id,
           notes: notes || null,
           status: 'pending'
-        })
-        .select()
-        .single();
+        });
 
       if (error) throw error;
 
       toast.success("Transfert créé avec succès !");
-      setReceiveAmount("");
-      setSendAmount("");
-      setSelectedRecipient(null);
-      setTransferMethod("");
-      setNotes("");
-      setStep(1);
       navigate('/history');
     } catch (error: any) {
-      console.error('Error creating transfer:', error);
-      toast.error("Erreur lors de la création du transfert");
+      console.error('Error:', error);
+      toast.error("Erreur lors de la création");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const formatCurrency = (amount: string) => {
-    if (!amount) return "0";
-    return parseFloat(amount).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const formatNumber = (num: string | number) => {
+    const n = typeof num === 'string' ? parseFloat(num) : num;
+    if (isNaN(n)) return "0";
+    return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
+  const fees = calculateFees();
+  const total = parseFloat(sendAmount || "0") + fees;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-background">
-      <div className="container mx-auto px-4 py-8 max-w-3xl pb-24">
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between mb-8"
-        >
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white pb-24">
+      <div className="container mx-auto px-4 py-6 max-w-lg">
+        
+        {/* Header */}
+        <div className="flex items-center gap-4 mb-6">
           <Button 
             variant="ghost" 
             size="icon"
+            className="rounded-full"
             onClick={() => step === 1 ? navigate('/dashboard') : setStep(step - 1)}
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <h1 className="text-2xl font-bold">Nouveau transfert</h1>
-          <div className="w-10"></div>
-        </motion.div>
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">Nouveau transfert</h1>
+            <p className="text-sm text-slate-500">Étape {step}/2</p>
+          </div>
+        </div>
 
+        {/* Progress */}
+        <div className="flex gap-2 mb-8">
+          <div className={`h-1 flex-1 rounded-full ${step >= 1 ? 'bg-primary' : 'bg-slate-200'}`} />
+          <div className={`h-1 flex-1 rounded-full ${step >= 2 ? 'bg-primary' : 'bg-slate-200'}`} />
+        </div>
+
+        {/* Step 1: Type selection */}
         {step === 1 && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
             className="space-y-6"
           >
             <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold mb-2">Type de conversion</h2>
-              <p className="text-muted-foreground">Choisissez votre conversion</p>
+              <h2 className="text-2xl font-bold text-slate-900 mb-2">Que souhaitez-vous faire ?</h2>
+              <p className="text-slate-500">Choisissez le type d'opération</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
               <Card
-                className={`p-8 cursor-pointer transition-all hover:shadow-xl ${
-                  conversionType === 'mad_to_cfa' ? 'border-primary ring-2 ring-primary bg-primary/5' : 'hover:border-primary/50'
+                className={`p-6 cursor-pointer transition-all border-2 ${
+                  conversionType === 'mad_to_cfa' 
+                    ? 'border-primary bg-primary/5 shadow-lg' 
+                    : 'border-slate-200 hover:border-primary/50 hover:shadow'
                 }`}
                 onClick={() => {
                   setConversionType('mad_to_cfa');
                   setFromCurrency('MAD');
                   setToCurrency('CFA');
-                  setStep(2);
                 }}
               >
-                <div className="flex flex-col items-center text-center space-y-4">
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg">
-                    <span className="text-white font-bold text-2xl">→</span>
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-blue-500 flex items-center justify-center shadow">
+                    <ArrowRight className="w-7 h-7 text-white" />
                   </div>
-                  <h3 className="text-2xl font-bold">Dirham → CFA</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Envoyer de l'argent vers l'Afrique
-                  </p>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-slate-900">Envoyer de l'argent</h3>
+                    <p className="text-sm text-slate-500">Dirhams → CFA (vers l'Afrique)</p>
+                  </div>
+                  {conversionType === 'mad_to_cfa' && (
+                    <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+                      <Check className="w-4 h-4 text-white" />
+                    </div>
+                  )}
                 </div>
               </Card>
 
               <Card
-                className={`p-8 cursor-pointer transition-all hover:shadow-xl ${
-                  conversionType === 'cfa_to_mad' ? 'border-primary ring-2 ring-primary bg-primary/5' : 'hover:border-primary/50'
+                className={`p-6 cursor-pointer transition-all border-2 ${
+                  conversionType === 'cfa_to_mad' 
+                    ? 'border-primary bg-primary/5 shadow-lg' 
+                    : 'border-slate-200 hover:border-primary/50 hover:shadow'
                 }`}
                 onClick={() => {
                   setConversionType('cfa_to_mad');
                   setFromCurrency('CFA');
                   setToCurrency('MAD');
-                  setStep(2);
                 }}
               >
-                <div className="flex flex-col items-center text-center space-y-4">
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-lg">
-                    <span className="text-white font-bold text-2xl">←</span>
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-green-500 flex items-center justify-center shadow">
+                    <ArrowLeft className="w-7 h-7 text-white" />
                   </div>
-                  <h3 className="text-2xl font-bold">CFA → Dirham</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Retirer de l'argent depuis l'Afrique
-                  </p>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-slate-900">Retirer de l'argent</h3>
+                    <p className="text-sm text-slate-500">CFA → Dirhams (depuis l'Afrique)</p>
+                  </div>
+                  {conversionType === 'cfa_to_mad' && (
+                    <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+                      <Check className="w-4 h-4 text-white" />
+                    </div>
+                  )}
                 </div>
               </Card>
             </div>
+
+            <Button 
+              className="w-full h-14 text-lg font-semibold rounded-2xl mt-8"
+              onClick={() => setStep(2)}
+            >
+              Continuer
+            </Button>
           </motion.div>
         )}
 
+        {/* Step 2: Details */}
         {step === 2 && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
             className="space-y-6"
           >
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold mb-2">Détails du transfert</h2>
-              <p className="text-muted-foreground">
-                {conversionType === 'mad_to_cfa' ? 'Envoi vers l\'Afrique' : 'Retrait depuis l\'Afrique'}
-              </p>
-            </div>
-
-            <Card className="p-6 space-y-6">
-              {/* Montant à recevoir */}
-              <div className="space-y-3">
-                <Label className="text-lg font-semibold">Bénéficiaire reçoit</Label>
-                <div className="flex items-center space-x-3">
-                  <Input
-                    type="number"
-                    value={receiveAmount}
-                    onChange={(e) => setReceiveAmount(e.target.value)}
-                    placeholder="0"
-                    className="text-3xl h-16 text-center font-bold"
-                  />
-                  <div className="px-6 py-4 bg-muted rounded-lg min-w-[100px] text-center">
-                    <span className="text-xl font-bold">{toCurrency}</span>
+            {/* Amount Card */}
+            <Card className="p-6 border-2 border-slate-200">
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-sm font-medium text-slate-600">Montant à recevoir</Label>
+                  <div className="flex items-center gap-3 mt-2">
+                    <Input
+                      type="number"
+                      value={receiveAmount}
+                      onChange={(e) => setReceiveAmount(e.target.value)}
+                      placeholder="0"
+                      className="text-2xl h-14 font-bold border-2 text-center"
+                    />
+                    <div className="px-4 py-3 bg-slate-100 rounded-xl font-bold text-lg min-w-[80px] text-center">
+                      {toCurrency}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex justify-center">
-                <ArrowDown className="w-8 h-8 text-muted-foreground animate-pulse" />
-              </div>
-
-              {/* Montant à envoyer (calculé) */}
-              <div className="space-y-3">
-                <Label className="text-lg font-semibold">Vous envoyez</Label>
-                <div className="flex items-center space-x-3">
-                  <Input
-                    type="text"
-                    value={sendAmount}
-                    readOnly
-                    className="text-3xl h-16 text-center font-bold bg-primary/10 text-primary"
-                  />
-                  <div className="px-6 py-4 bg-primary/10 rounded-lg min-w-[100px] text-center">
-                    <span className="text-xl font-bold text-primary">{fromCurrency}</span>
+                <div className="flex items-center justify-center py-2">
+                  <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
+                    <ArrowRight className="w-4 h-4 text-slate-400 rotate-90" />
                   </div>
                 </div>
-              </div>
 
-              {/* Taux */}
-              <div className="bg-muted/50 p-4 rounded-lg">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Taux de change</span>
-                  <span className="font-medium">
-                    1 {toCurrency} = {conversionType === 'mad_to_cfa' ? exchangeRates.cfa_to_mad.toFixed(6) : '62.50000'} {fromCurrency}
-                  </span>
+                <div>
+                  <Label className="text-sm font-medium text-slate-600">Vous envoyez</Label>
+                  <div className="flex items-center gap-3 mt-2">
+                    <div className="flex-1 text-2xl h-14 font-bold border-2 rounded-lg bg-primary/5 border-primary/20 flex items-center justify-center text-primary">
+                      {formatNumber(sendAmount)}
+                    </div>
+                    <div className="px-4 py-3 bg-primary/10 rounded-xl font-bold text-lg text-primary min-w-[80px] text-center">
+                      {fromCurrency}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t space-y-1 text-sm">
+                  <div className="flex justify-between text-slate-500">
+                    <span>Taux</span>
+                    <span>1 {toCurrency} = {conversionType === 'mad_to_cfa' ? exchangeRates.cfa_to_mad.toFixed(4) : '62.50'} {fromCurrency}</span>
+                  </div>
                 </div>
               </div>
             </Card>
 
+            {/* Recipient (only for MAD→CFA) */}
             {conversionType === 'mad_to_cfa' && (
               <div className="space-y-3">
-                <Label className="text-lg font-semibold">Bénéficiaire</Label>
-                <Select value={selectedRecipient?.id} onValueChange={(id) => {
-                  const recipient = recipients.find(r => r.id === id);
-                  setSelectedRecipient(recipient || null);
-                }}>
-                  <SelectTrigger className="h-14 text-lg">
+                <Label className="text-base font-semibold text-slate-800">Bénéficiaire</Label>
+                <Select 
+                  value={selectedRecipient?.id} 
+                  onValueChange={(id) => {
+                    const recipient = recipients.find(r => r.id === id);
+                    setSelectedRecipient(recipient || null);
+                  }}
+                >
+                  <SelectTrigger className="h-14 text-base border-2">
                     <SelectValue placeholder="Choisir un bénéficiaire" />
                   </SelectTrigger>
                   <SelectContent>
-                    {recipients.map((recipient) => (
-                      <SelectItem key={recipient.id} value={recipient.id}>
+                    {recipients.map((r) => (
+                      <SelectItem key={r.id} value={r.id}>
                         <div className="flex flex-col">
-                          <span className="font-medium">{recipient.name}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {recipient.country}
-                          </span>
+                          <span className="font-medium">{r.name}</span>
+                          <span className="text-xs text-slate-500">{r.country} • {r.phone}</span>
                         </div>
                       </SelectItem>
                     ))}
@@ -343,74 +367,70 @@ const ModernTransferForm = () => {
                 <Button
                   variant="outline"
                   onClick={() => setShowAddRecipient(true)}
-                  className="w-full h-12"
+                  className="w-full h-12 border-2 border-dashed"
                 >
-                  <Plus className="w-5 h-5 mr-2" />
+                  <Plus className="w-4 h-4 mr-2" />
                   Ajouter un bénéficiaire
                 </Button>
               </div>
             )}
 
-            {/* Moyens de paiement sous forme de cartes */}
+            {/* Payment Method */}
             <div className="space-y-3">
-              <Label className="text-lg font-semibold">Moyen de paiement</Label>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card
-                  className={`p-6 cursor-pointer transition-all hover:shadow-md ${
-                    transferMethod === 'wave' ? 'border-primary ring-2 ring-primary bg-primary/5' : ''
-                  }`}
-                  onClick={() => setTransferMethod('wave')}
-                >
-                  <div className="flex flex-col items-center text-center space-y-3">
-                    <div className="w-16 h-16 rounded-full bg-yellow-500/20 flex items-center justify-center">
-                      <Smartphone className="w-8 h-8 text-yellow-600" />
+              <Label className="text-base font-semibold text-slate-800">Moyen de paiement</Label>
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { id: 'wave', label: 'Wave', icon: Smartphone, color: 'bg-yellow-500' },
+                  { id: 'orange_money', label: 'Orange', icon: Smartphone, color: 'bg-orange-500' },
+                  { id: 'bank_transfer', label: 'Banque', icon: Building2, color: 'bg-blue-500' }
+                ].map((method) => (
+                  <Card
+                    key={method.id}
+                    className={`p-4 cursor-pointer transition-all border-2 text-center ${
+                      transferMethod === method.id 
+                        ? 'border-primary bg-primary/5' 
+                        : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                    onClick={() => setTransferMethod(method.id)}
+                  >
+                    <div className={`w-10 h-10 ${method.color} rounded-xl flex items-center justify-center mx-auto mb-2`}>
+                      <method.icon className="w-5 h-5 text-white" />
                     </div>
-                    <h4 className="font-semibold text-lg">Wave</h4>
-                    <p className="text-xs text-muted-foreground">
-                      {selectedRecipient?.country === 'Sénégal' ? 'Frais: 1%' : 'Frais: 1.5%'}
+                    <p className="font-medium text-sm text-slate-800">{method.label}</p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {method.id === 'bank_transfer' 
+                        ? 'Gratuit' 
+                        : conversionType === 'cfa_to_mad'
+                          ? 'Inclus'
+                          : selectedRecipient?.country === 'Sénégal' ? '1%' : '1.5%'
+                      }
                     </p>
-                  </div>
-                </Card>
-
-                <Card
-                  className={`p-6 cursor-pointer transition-all hover:shadow-md ${
-                    transferMethod === 'orange_money' ? 'border-primary ring-2 ring-primary bg-primary/5' : ''
-                  }`}
-                  onClick={() => setTransferMethod('orange_money')}
-                >
-                  <div className="flex flex-col items-center text-center space-y-3">
-                    <div className="w-16 h-16 rounded-full bg-orange-500/20 flex items-center justify-center">
-                      <Smartphone className="w-8 h-8 text-orange-600" />
-                    </div>
-                    <h4 className="font-semibold text-lg">Orange Money</h4>
-                    <p className="text-xs text-muted-foreground">
-                      {selectedRecipient?.country === 'Sénégal' ? 'Frais: 1%' : 'Frais: 1.5%'}
-                    </p>
-                  </div>
-                </Card>
-
-                <Card
-                  className={`p-6 cursor-pointer transition-all hover:shadow-md ${
-                    transferMethod === 'bank_transfer' ? 'border-primary ring-2 ring-primary bg-primary/5' : ''
-                  }`}
-                  onClick={() => setTransferMethod('bank_transfer')}
-                >
-                  <div className="flex flex-col items-center text-center space-y-3">
-                    <div className="w-16 h-16 rounded-full bg-blue-500/20 flex items-center justify-center">
-                      <Building2 className="w-8 h-8 text-blue-600" />
-                    </div>
-                    <h4 className="font-semibold text-lg">Virement bancaire</h4>
-                    <p className="text-xs text-green-600 font-medium">Gratuit</p>
-                  </div>
-                </Card>
+                  </Card>
+                ))}
               </div>
             </div>
 
-            {/* RIB bancaires */}
+            {/* Fee Info for MAD→CFA */}
+            {conversionType === 'mad_to_cfa' && (transferMethod === 'wave' || transferMethod === 'orange_money') && (
+              <div className="p-4 bg-blue-50 rounded-xl flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-blue-500 mt-0.5" />
+                <div className="text-sm text-blue-800">
+                  <p className="font-medium">Frais {getFeeLabel()}</p>
+                  <p className="text-blue-600">
+                    {selectedRecipient?.country === 'Sénégal' 
+                      ? 'Tarif réduit pour le Sénégal'
+                      : 'Tarif standard pour les autres pays'
+                    }
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Bank RIBs */}
             {transferMethod === 'bank_transfer' && (
-              <Card className="p-6 bg-blue-50 dark:bg-blue-950/20 border-blue-200">
-                <h4 className="font-semibold mb-4 flex items-center gap-2 text-lg">
-                  <Building2 className="w-5 h-5" />
+              <Card className="p-4 bg-blue-50 border-blue-200">
+                <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                  <Building2 className="w-4 h-4" />
                   Nos RIB bancaires
                 </h4>
                 <div className="space-y-2 text-sm">
@@ -422,85 +442,69 @@ const ModernTransferForm = () => {
                     { name: "Société Générale", rib: "022780000760003747072074" },
                     { name: "BMCE", rib: "011825000010200000210393" }
                   ].map((bank) => (
-                    <div key={bank.rib} className="flex justify-between p-3 bg-background rounded-lg">
-                      <span className="font-medium">{bank.name}</span>
-                      <span className="font-mono text-xs">{bank.rib}</span>
+                    <div key={bank.rib} className="flex justify-between p-2 bg-white rounded-lg">
+                      <span className="font-medium text-slate-700">{bank.name}</span>
+                      <span className="font-mono text-xs text-slate-500">{bank.rib}</span>
                     </div>
                   ))}
                 </div>
               </Card>
             )}
 
-            {/* Note pour Wave/OM */}
-            {(transferMethod === 'wave' || transferMethod === 'orange_money') && (
-              <Card className="p-4 bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200">
-                <p className="text-sm flex items-start gap-2">
-                  <InfoIcon className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                  <span>
-                    L'admin vous fournira le numéro de réception après validation de votre demande.
-                  </span>
-                </p>
-              </Card>
-            )}
-
             {/* Notes */}
             <div className="space-y-2">
-              <Label>Notes (optionnel)</Label>
+              <Label className="text-sm font-medium text-slate-600">Notes (optionnel)</Label>
               <Textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Ajoutez des informations complémentaires..."
-                className="min-h-[100px]"
+                placeholder="Instructions supplémentaires..."
+                className="resize-none border-2"
+                rows={2}
               />
             </div>
 
-            {/* Récapitulatif */}
-            <Card className="p-6 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
-              <h3 className="font-bold text-xl mb-4 flex items-center gap-2">
-                <Receipt className="w-6 h-6" />
-                Récapitulatif
-              </h3>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center pb-3 border-b border-border/50">
-                  <span className="text-muted-foreground">Bénéficiaire reçoit</span>
-                  <span className="font-bold text-xl">{formatCurrency(receiveAmount)} {toCurrency}</span>
+            {/* Summary */}
+            {sendAmount && parseFloat(sendAmount) > 0 && (
+              <Card className="p-4 bg-slate-900 text-white">
+                <h4 className="font-semibold mb-3">Récapitulatif</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-slate-300">Montant</span>
+                    <span>{formatNumber(sendAmount)} {fromCurrency}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-300">Frais ({getFeeLabel()})</span>
+                    <span>{formatNumber(fees)} {fromCurrency}</span>
+                  </div>
+                  <div className="flex justify-between pt-2 border-t border-slate-700 font-bold text-lg">
+                    <span>Total</span>
+                    <span>{formatNumber(total)} {fromCurrency}</span>
+                  </div>
+                  <div className="flex justify-between text-green-400 pt-1">
+                    <span>Bénéficiaire reçoit</span>
+                    <span className="font-bold">{formatNumber(receiveAmount)} {toCurrency}</span>
+                  </div>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Taux de change</span>
-                  <span className="font-medium text-sm">
-                    1 {toCurrency} = {conversionType === 'mad_to_cfa' ? exchangeRates.cfa_to_mad.toFixed(6) : '62.50000'} {fromCurrency}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Frais de transfert</span>
-                  <span className={calculateFees() === 0 ? "text-green-600 font-medium" : "font-medium"}>
-                    {calculateFees() === 0 ? 'Gratuit' : `${formatCurrency(calculateFees().toFixed(2))} ${fromCurrency}`}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center pt-3 border-t border-border">
-                  <span className="font-bold text-lg">Total à payer</span>
-                  <span className="font-bold text-2xl text-primary">
-                    {formatCurrency((parseFloat(sendAmount || "0") + calculateFees()).toFixed(2))} {fromCurrency}
-                  </span>
-                </div>
-              </div>
-            </Card>
+              </Card>
+            )}
 
-            <Button
+            {/* Submit */}
+            <Button 
+              className="w-full h-14 text-lg font-semibold rounded-2xl"
               onClick={handleSubmit}
-              disabled={!receiveAmount || (conversionType === 'mad_to_cfa' && !selectedRecipient) || !transferMethod}
-              className="w-full h-14 text-lg"
+              disabled={isSubmitting || !receiveAmount || !transferMethod || (conversionType === 'mad_to_cfa' && !selectedRecipient)}
             >
-              Valider le transfert
-              <Check className="w-5 h-5 ml-2" />
+              {isSubmitting ? "Traitement..." : "Confirmer le transfert"}
             </Button>
           </motion.div>
         )}
 
         <AddRecipientDialog 
-          open={showAddRecipient}
+          open={showAddRecipient} 
           onOpenChange={setShowAddRecipient}
-          onRecipientAdded={loadRecipients}
+          onRecipientAdded={() => {
+            loadRecipients();
+          }}
         />
       </div>
     </div>

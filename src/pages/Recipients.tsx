@@ -1,32 +1,42 @@
 import { useState, useEffect } from 'react';
-import { Plus, User, Phone, MapPin, Trash2, Edit } from 'lucide-react';
+import { Plus, User, Phone, MapPin, Trash2, Edit, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import Navbar from '@/components/Navbar';
 import BottomNavigation from '@/components/BottomNavigation';
+import { Link } from 'react-router-dom';
 
 interface Recipient {
   id: string;
   name: string;
   phone: string;
   country: string;
-  bank_account?: string;
-  wave_number?: string;
+  transfer_number?: string;
 }
+
+const countries = [
+  { value: 'Sénégal', label: 'Sénégal' },
+  { value: 'Mali', label: 'Mali' },
+  { value: 'Burkina Faso', label: 'Burkina Faso' },
+  { value: 'Côte d\'Ivoire', label: 'Côte d\'Ivoire' },
+  { value: 'Niger', label: 'Niger' },
+  { value: 'Bénin', label: 'Bénin' },
+  { value: 'Togo', label: 'Togo' },
+  { value: 'Guinée-Bissau', label: 'Guinée-Bissau' }
+];
 
 const Recipients = () => {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [recipients, setRecipients] = useState<Recipient[]>([]);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingRecipient, setEditingRecipient] = useState<Recipient | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -34,8 +44,7 @@ const Recipients = () => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [country, setCountry] = useState('');
-  const [bankAccount, setBankAccount] = useState('');
-  const [waveNumber, setWaveNumber] = useState('');
+  const [transferNumber, setTransferNumber] = useState('');
 
   useEffect(() => {
     loadRecipients();
@@ -44,289 +53,158 @@ const Recipients = () => {
   const loadRecipients = async () => {
     if (!user) return;
 
-    try {
-      const { data } = await supabase
-        .from('recipients')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+    const { data } = await supabase
+      .from('recipients')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
 
-      if (data) {
-        setRecipients(data);
-      }
-    } catch (error) {
-      console.error('Error loading recipients:', error);
-    }
+    if (data) setRecipients(data);
   };
 
   const resetForm = () => {
     setName('');
     setPhone('');
     setCountry('');
-    setBankAccount('');
-    setWaveNumber('');
+    setTransferNumber('');
     setEditingRecipient(null);
   };
 
-  const openEditDialog = (recipient: Recipient) => {
+  const openEdit = (recipient: Recipient) => {
     setEditingRecipient(recipient);
     setName(recipient.name);
     setPhone(recipient.phone);
     setCountry(recipient.country);
-    setBankAccount(recipient.bank_account || '');
-    setWaveNumber(recipient.wave_number || '');
-    setIsAddDialogOpen(true);
+    setTransferNumber(recipient.transfer_number || '');
+    setIsDialogOpen(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!name || !phone || !country) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez remplir tous les champs obligatoires",
-        variant: "destructive",
-      });
+      toast.error("Remplissez tous les champs obligatoires");
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const recipientData = {
+      const data = {
         user_id: user?.id,
         name,
         phone,
         country,
-        bank_account: bankAccount || null,
-        wave_number: waveNumber || null,
+        transfer_number: transferNumber || null,
       };
 
       if (editingRecipient) {
-        // Update existing recipient
         const { error } = await supabase
           .from('recipients')
-          .update(recipientData)
+          .update(data)
           .eq('id', editingRecipient.id);
-
         if (error) throw error;
-
-        toast({
-          title: "Bénéficiaire modifié",
-          description: "Les informations ont été mises à jour avec succès",
-        });
+        toast.success("Bénéficiaire modifié");
       } else {
-        // Create new recipient
         const { error } = await supabase
           .from('recipients')
-          .insert([recipientData]);
-
+          .insert([data]);
         if (error) throw error;
-
-        toast({
-          title: "Bénéficiaire ajouté",
-          description: "Le nouveau bénéficiaire a été créé avec succès",
-        });
+        toast.success("Bénéficiaire ajouté");
       }
 
       resetForm();
-      setIsAddDialogOpen(false);
+      setIsDialogOpen(false);
       loadRecipients();
     } catch (error: any) {
-      console.error('Error saving recipient:', error);
-      toast({
-        title: "Erreur",
-        description: error.message || "Erreur lors de la sauvegarde",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Erreur lors de la sauvegarde");
     }
 
     setIsLoading(false);
   };
 
-  const handleDelete = async (recipientId: string) => {
+  const handleDelete = async (id: string) => {
     try {
       const { error } = await supabase
         .from('recipients')
         .delete()
-        .eq('id', recipientId);
-
+        .eq('id', id);
       if (error) throw error;
-
-      toast({
-        title: "Bénéficiaire supprimé",
-        description: "Le bénéficiaire a été supprimé avec succès",
-      });
-
+      toast.success("Bénéficiaire supprimé");
       loadRecipients();
     } catch (error: any) {
-      console.error('Error deleting recipient:', error);
-      toast({
-        title: "Erreur",
-        description: error.message || "Erreur lors de la suppression",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Erreur lors de la suppression");
     }
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="hidden md:block">
-        <Navbar />
-      </div>
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white pb-24">
+      <div className="hidden md:block"><Navbar /></div>
       
-      <div className="container mx-auto px-4 py-8 pb-24 md:pb-8 max-w-7xl">
-        {/* Mobile Header */}
-        <div className="md:hidden mb-6">
-          <h1 className="text-2xl font-bold text-foreground mb-2">
-            Bénéficiaires 👥
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            Gérez vos contacts
-          </p>
-        </div>
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
-          <div className="hidden md:block">
-            <h1 className="text-3xl font-bold text-foreground mb-2">
-              Bénéficiaires
-            </h1>
-            <p className="text-muted-foreground">
-              Gérez vos contacts pour les transferts d'argent
-            </p>
+      <div className="container mx-auto px-4 py-6 max-w-lg md:max-w-4xl">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Bénéficiaires</h1>
+            <p className="text-slate-500 text-sm">Vos contacts de transfert</p>
           </div>
-
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={resetForm} className="w-full md:w-auto">
-                <Plus className="w-4 h-4 mr-2" />
-                Ajouter un bénéficiaire
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px]">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingRecipient ? 'Modifier le bénéficiaire' : 'Ajouter un nouveau bénéficiaire'}
-                </DialogTitle>
-              </DialogHeader>
-
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Nom complet *</Label>
-                    <Input
-                      id="name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="Nom et prénom"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Téléphone *</Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+212 6 XX XX XX XX"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="country">Pays *</Label>
-                  <Select value={country} onValueChange={setCountry} required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner un pays" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Morocco">Maroc</SelectItem>
-                      <SelectItem value="Senegal">Sénégal</SelectItem>
-                      <SelectItem value="Mali">Mali</SelectItem>
-                      <SelectItem value="Burkina Faso">Burkina Faso</SelectItem>
-                      <SelectItem value="Ivory Coast">Côte d'Ivoire</SelectItem>
-                      <SelectItem value="Niger">Niger</SelectItem>
-                      <SelectItem value="Benin">Bénin</SelectItem>
-                      <SelectItem value="Togo">Togo</SelectItem>
-                      <SelectItem value="Guinea-Bissau">Guinée-Bissau</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="bankAccount">Compte bancaire (optionnel)</Label>
-                  <Input
-                    id="bankAccount"
-                    value={bankAccount}
-                    onChange={(e) => setBankAccount(e.target.value)}
-                    placeholder="Numéro de compte bancaire"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="waveNumber">Numéro Wave (optionnel)</Label>
-                  <Input
-                    id="waveNumber"
-                    value={waveNumber}
-                    onChange={(e) => setWaveNumber(e.target.value)}
-                    placeholder="Numéro Wave"
-                  />
-                </div>
-
-                <div className="flex justify-end space-x-4">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => setIsAddDialogOpen(false)}
-                  >
-                    Annuler
-                  </Button>
-                  <Button type="submit" disabled={isLoading}>
-                    {isLoading ? "Enregistrement..." : (editingRecipient ? "Modifier" : "Ajouter")}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+          <Button onClick={() => { resetForm(); setIsDialogOpen(true); }}>
+            <Plus className="w-4 h-4 mr-2" />
+            Ajouter
+          </Button>
         </div>
 
         {/* Recipients List */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {recipients.length > 0 ? (
-            recipients.map((recipient) => (
-              <Card key={recipient.id} className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center">
-                    <User className="w-6 h-6 text-primary" />
+        {recipients.length > 0 ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            {recipients.map((recipient) => (
+              <Card key={recipient.id} className="p-4">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <User className="w-6 h-6 text-blue-600" />
                   </div>
                   
-                  <div className="flex space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openEditDialog(recipient)}
-                    >
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-slate-900 truncate">{recipient.name}</h3>
+                    
+                    <div className="flex items-center gap-1 text-sm text-slate-500 mt-1">
+                      <Phone className="w-3 h-3" />
+                      {recipient.phone}
+                    </div>
+                    
+                    <div className="flex items-center gap-1 text-sm text-slate-500">
+                      <MapPin className="w-3 h-3" />
+                      {recipient.country}
+                    </div>
+
+                    {recipient.transfer_number && (
+                      <p className="text-xs text-slate-400 mt-1 truncate">
+                        N° transfert: {recipient.transfer_number}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(recipient)}>
                       <Edit className="w-4 h-4" />
                     </Button>
                     
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="outline" size="sm">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600">
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Supprimer le bénéficiaire</AlertDialogTitle>
+                          <AlertDialogTitle>Supprimer ce bénéficiaire ?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Êtes-vous sûr de vouloir supprimer ce bénéficiaire ? Cette action est irréversible.
+                            Cette action est irréversible.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Annuler</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDelete(recipient.id)}>
+                          <AlertDialogAction onClick={() => handleDelete(recipient.id)} className="bg-red-500 hover:bg-red-600">
                             Supprimer
                           </AlertDialogAction>
                         </AlertDialogFooter>
@@ -335,61 +213,101 @@ const Recipients = () => {
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  <h3 className="font-semibold text-lg text-foreground">
-                    {recipient.name}
-                  </h3>
-                  
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <Phone className="w-4 h-4 mr-2" />
-                    {recipient.phone}
-                  </div>
-                  
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <MapPin className="w-4 h-4 mr-2" />
-                    {recipient.country}
-                  </div>
-
-                  {recipient.bank_account && (
-                    <div className="text-sm text-muted-foreground">
-                      <strong>Banque:</strong> {recipient.bank_account}
-                    </div>
-                  )}
-
-                  {recipient.wave_number && (
-                    <div className="text-sm text-muted-foreground">
-                      <strong>Wave:</strong> {recipient.wave_number}
-                    </div>
-                  )}
-                </div>
-
-                <Button asChild className="w-full mt-4" variant="outline">
-                  <a href={`/transfer?recipient=${recipient.id}`}>
+                <Link to={`/transfer?recipient=${recipient.id}`}>
+                  <Button variant="outline" size="sm" className="w-full mt-3">
+                    <Send className="w-4 h-4 mr-2" />
                     Envoyer de l'argent
-                  </a>
-                </Button>
+                  </Button>
+                </Link>
               </Card>
-            ))
-          ) : (
-            <div className="col-span-full">
-              <Card className="p-12 text-center">
-                <User className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-foreground mb-2">
-                  Aucun bénéficiaire
-                </h3>
-                <p className="text-muted-foreground mb-6">
-                  Ajoutez vos premiers bénéficiaires pour commencer à envoyer de l'argent
-                </p>
-                <Button onClick={() => setIsAddDialogOpen(true)}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Ajouter un bénéficiaire
-                </Button>
-              </Card>
+            ))}
+          </div>
+        ) : (
+          <Card className="p-8 text-center">
+            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <User className="w-8 h-8 text-slate-400" />
             </div>
-          )}
-        </div>
+            <h3 className="font-semibold text-slate-900 mb-2">Aucun bénéficiaire</h3>
+            <p className="text-slate-500 text-sm mb-4">
+              Ajoutez vos contacts pour envoyer de l'argent rapidement
+            </p>
+            <Button onClick={() => setIsDialogOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Ajouter un bénéficiaire
+            </Button>
+          </Card>
+        )}
       </div>
-      
+
+      {/* Add/Edit Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {editingRecipient ? 'Modifier' : 'Ajouter'} un bénéficiaire
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nom complet *</Label>
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Prénom et nom"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Téléphone *</Label>
+              <Input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+221 77 XXX XX XX"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Pays *</Label>
+              <Select value={country} onValueChange={setCountry} required>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner un pays" />
+                </SelectTrigger>
+                <SelectContent>
+                  {countries.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Numéro de transfert (optionnel)</Label>
+              <Input
+                value={transferNumber}
+                onChange={(e) => setTransferNumber(e.target.value)}
+                placeholder="Numéro Wave, Orange Money ou compte bancaire"
+              />
+              <p className="text-xs text-slate-500">
+                Ce numéro sera utilisé pour recevoir les fonds
+              </p>
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="flex-1">
+                Annuler
+              </Button>
+              <Button type="submit" disabled={isLoading} className="flex-1">
+                {isLoading ? "..." : (editingRecipient ? "Modifier" : "Ajouter")}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       <BottomNavigation />
     </div>
   );
