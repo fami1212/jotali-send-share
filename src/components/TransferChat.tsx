@@ -37,7 +37,7 @@ const TransferChat = ({ transferId, onClose, isAdmin: isAdminProp, embedded = fa
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
+  const [quickReplyOpen, setQuickReplyOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -71,7 +71,11 @@ const TransferChat = ({ transferId, onClose, isAdmin: isAdminProp, embedded = fa
           },
           (payload) => {
             const newMsg = payload.new as Message;
-            setMessages(prev => [...prev, newMsg]);
+            // Avoid duplicates - check if message already exists
+            setMessages(prev => {
+              if (prev.find(m => m.id === newMsg.id)) return prev;
+              return [...prev, newMsg];
+            });
             if (newMsg.sender_id !== user?.id) {
               markMessagesAsRead();
             }
@@ -98,10 +102,14 @@ const TransferChat = ({ transferId, onClose, isAdmin: isAdminProp, embedded = fa
   }, [transferId, user?.id]);
 
   useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const scrollToBottom = () => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  };
 
   const loadMessages = async () => {
     const { data, error } = await supabase
@@ -131,18 +139,42 @@ const TransferChat = ({ transferId, onClose, isAdmin: isAdminProp, embedded = fa
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() && !selectedFile) return;
+    if (!user?.id) return;
 
+    const messageText = newMessage.trim();
+    const fileToUpload = selectedFile;
+    
+    // Clear input immediately for better UX
+    setNewMessage("");
+    setSelectedFile(null);
     setIsUploading(true);
+
+    // Create optimistic message
+    const optimisticId = `temp-${Date.now()}`;
+    const optimisticMessage: Message = {
+      id: optimisticId,
+      transfer_id: transferId,
+      sender_id: user.id,
+      is_admin: isAdmin,
+      message: messageText || null,
+      file_url: null,
+      created_at: new Date().toISOString(),
+      read: false
+    };
+
+    // Add to UI immediately
+    setMessages(prev => [...prev, optimisticMessage]);
+
     try {
       let fileUrl = null;
 
-      if (selectedFile) {
-        const fileExt = selectedFile.name.split('.').pop();
-        const fileName = `${user?.id}/${Date.now()}.${fileExt}`;
+      if (fileToUpload) {
+        const fileExt = fileToUpload.name.split('.').pop();
+        const fileName = `${user.id}/${Date.now()}.${fileExt}`;
         
         const { error: uploadError } = await supabase.storage
           .from('message-attachments')
-          .upload(fileName, selectedFile);
+          .upload(fileName, fileToUpload);
 
         if (uploadError) throw uploadError;
 
@@ -153,23 +185,32 @@ const TransferChat = ({ transferId, onClose, isAdmin: isAdminProp, embedded = fa
         fileUrl = publicUrl;
       }
 
-      const { error } = await supabase
+      const { data: insertedMessage, error } = await supabase
         .from('messages')
         .insert({
           transfer_id: transferId,
-          sender_id: user?.id,
+          sender_id: user.id,
           is_admin: isAdmin,
-          message: newMessage.trim() || null,
+          message: messageText || null,
           file_url: fileUrl
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
-      setNewMessage("");
-      setSelectedFile(null);
+      // Replace optimistic message with real one
+      setMessages(prev => prev.map(m => 
+        m.id === optimisticId ? insertedMessage : m
+      ));
+
     } catch (error: any) {
       console.error('Error sending message:', error);
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(m => m.id !== optimisticId));
       toast.error("Erreur lors de l'envoi");
+      // Restore the message text
+      setNewMessage(messageText);
     } finally {
       setIsUploading(false);
     }
@@ -184,6 +225,11 @@ const TransferChat = ({ transferId, onClose, isAdmin: isAdminProp, embedded = fa
       }
       setSelectedFile(file);
     }
+  };
+
+  const handleQuickReply = (text: string) => {
+    setNewMessage(text);
+    setQuickReplyOpen(false);
   };
 
   const formatMessageDate = (date: string) => {
@@ -213,6 +259,15 @@ const TransferChat = ({ transferId, onClose, isAdmin: isAdminProp, embedded = fa
     return /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
   };
 
+  const quickReplies = [
+    { emoji: "📸", text: "Veuillez nous fournir une preuve de paiement pour votre transfert." },
+    { emoji: "✅", text: "Votre transfert a été validé et sera traité rapidement." },
+    { emoji: "🔢", text: "Voici le numéro d'envoi pour votre retrait : " },
+    { emoji: "⏳", text: "Votre preuve de paiement est en cours de vérification." },
+    { emoji: "ℹ️", text: "Nous avons besoin d'informations complémentaires." },
+    { emoji: "💰", text: "Le montant a été envoyé. Vous pouvez le retirer." }
+  ];
+
   return (
     <Card className={`flex flex-col ${embedded ? 'h-full border-0 shadow-none bg-transparent' : 'h-[500px] md:h-[600px]'}`}>
       {/* WhatsApp-style Header */}
@@ -223,9 +278,7 @@ const TransferChat = ({ transferId, onClose, isAdmin: isAdminProp, embedded = fa
           </div>
           <div className="flex-1">
             <h3 className="font-semibold">{isAdmin ? 'Client' : 'Jotali Support'}</h3>
-            <p className="text-xs text-emerald-100">
-              {messages.length > 0 ? 'En ligne' : 'Disponible'}
-            </p>
+            <p className="text-xs text-emerald-100">En ligne</p>
           </div>
           {onClose && (
             <Button variant="ghost" size="icon" onClick={onClose} className="text-white hover:bg-white/20">
@@ -235,7 +288,7 @@ const TransferChat = ({ transferId, onClose, isAdmin: isAdminProp, embedded = fa
         </div>
       )}
 
-      {/* Messages Area - WhatsApp style background */}
+      {/* Messages Area */}
       <div 
         className="flex-1 overflow-y-auto p-4"
         style={{
@@ -256,14 +309,15 @@ const TransferChat = ({ transferId, onClose, isAdmin: isAdminProp, embedded = fa
               
               {/* Messages */}
               <AnimatePresence>
-                {msgs.map((msg, idx) => {
+                {msgs.map((msg) => {
                   const isMe = msg.sender_id === user?.id;
+                  const isOptimistic = msg.id.startsWith('temp-');
                   
                   return (
                     <motion.div
                       key={msg.id}
                       initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      animate={{ opacity: isOptimistic ? 0.7 : 1, y: 0, scale: 1 }}
                       transition={{ duration: 0.2 }}
                       className={`flex mb-1 ${isMe ? 'justify-end' : 'justify-start'}`}
                     >
@@ -323,12 +377,15 @@ const TransferChat = ({ transferId, onClose, isAdmin: isAdminProp, embedded = fa
                           <span className="text-[10px] text-slate-500">
                             {formatTime(msg.created_at)}
                           </span>
-                          {isMe && (
+                          {isMe && !isOptimistic && (
                             msg.read ? (
                               <CheckCheck className="w-3.5 h-3.5 text-blue-500" />
                             ) : (
                               <Check className="w-3.5 h-3.5 text-slate-400" />
                             )
+                          )}
+                          {isMe && isOptimistic && (
+                            <div className="w-3 h-3 border border-slate-400 border-t-transparent rounded-full animate-spin" />
                           )}
                         </div>
                       </div>
@@ -353,7 +410,7 @@ const TransferChat = ({ transferId, onClose, isAdmin: isAdminProp, embedded = fa
         </div>
       </div>
 
-      {/* Input area - WhatsApp style */}
+      {/* Input area */}
       <div className="p-3 bg-slate-100 shrink-0 space-y-2">
         {/* Selected file preview */}
         {selectedFile && (
@@ -372,30 +429,26 @@ const TransferChat = ({ transferId, onClose, isAdmin: isAdminProp, embedded = fa
 
         {/* Quick replies for admin */}
         {isAdmin && (
-          <Popover>
+          <Popover open={quickReplyOpen} onOpenChange={setQuickReplyOpen}>
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm" className="w-full bg-white">
                 <Zap className="w-4 h-4 mr-2 text-amber-500" />
                 Réponses rapides
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-80" align="start">
+            <PopoverContent className="w-80" align="start" side="top">
               <div className="space-y-1">
-                {[
-                  { emoji: "📸", text: "Veuillez nous fournir une preuve de paiement pour votre transfert." },
-                  { emoji: "✅", text: "Votre transfert a été validé et sera traité rapidement." },
-                  { emoji: "🔢", text: "Voici le numéro d'envoi pour votre retrait : " },
-                  { emoji: "⏳", text: "Votre preuve de paiement est en cours de vérification." },
-                  { emoji: "ℹ️", text: "Nous avons besoin d'informations complémentaires." }
-                ].map((item, i) => (
+                <p className="text-sm font-medium mb-2 text-slate-700">Sélectionner un message :</p>
+                {quickReplies.map((item, i) => (
                   <Button
                     key={i}
                     variant="ghost"
                     size="sm"
-                    className="w-full justify-start text-left h-auto py-2 text-sm"
-                    onClick={() => setNewMessage(item.text)}
+                    className="w-full justify-start text-left h-auto py-2 text-sm hover:bg-emerald-50"
+                    onClick={() => handleQuickReply(item.text)}
                   >
-                    {item.emoji} {item.text.substring(0, 40)}...
+                    <span className="mr-2">{item.emoji}</span>
+                    <span className="truncate">{item.text}</span>
                   </Button>
                 ))}
               </div>
