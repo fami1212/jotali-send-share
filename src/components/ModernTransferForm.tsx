@@ -85,6 +85,12 @@ const ModernTransferForm = () => {
 
   // Calcul des frais: MAD→CFA uniquement
   // Sénégal = 1%, autres pays Wave/OM = 1.5%, virement = 0%
+  const isSenegal = (country: string | undefined) => {
+    if (!country) return false;
+    const normalized = country.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    return normalized === 'senegal' || normalized === 'sénégal' || country === 'Sénégal' || country === 'Senegal';
+  };
+
   const calculateFees = () => {
     if (!sendAmount) return 0;
     const baseAmount = parseFloat(sendAmount);
@@ -95,17 +101,31 @@ const ModernTransferForm = () => {
     // MAD→CFA: selon pays et méthode
     if (transferMethod === 'bank_transfer') return 0;
     
-    if (selectedRecipient?.country === 'Sénégal') {
-      return baseAmount * 0.01; // 1% Sénégal
+    // Wave ou Orange Money
+    if (transferMethod === 'wave' || transferMethod === 'orange_money') {
+      if (isSenegal(selectedRecipient?.country)) {
+        return baseAmount * 0.01; // 1% Sénégal
+      }
+      return baseAmount * 0.015; // 1.5% autres pays
     }
     
-    return baseAmount * 0.015; // 1.5% autres pays
+    return 0;
   };
 
   const getFeeLabel = () => {
-    if (conversionType === 'cfa_to_mad') return 'Inclus dans le taux';
+    if (conversionType === 'cfa_to_mad') return 'Inclus';
     if (transferMethod === 'bank_transfer') return 'Gratuit';
-    if (selectedRecipient?.country === 'Sénégal') return '1%';
+    if (transferMethod === 'wave' || transferMethod === 'orange_money') {
+      if (isSenegal(selectedRecipient?.country)) return '1%';
+      return '1.5%';
+    }
+    return '0%';
+  };
+
+  const getFeeForMethod = (methodId: string) => {
+    if (methodId === 'bank_transfer') return 'Gratuit';
+    if (conversionType === 'cfa_to_mad') return 'Inclus';
+    if (isSenegal(selectedRecipient?.country)) return '1%';
     return '1.5%';
   };
 
@@ -398,12 +418,7 @@ const ModernTransferForm = () => {
                     </div>
                     <p className="font-medium text-sm text-slate-800">{method.label}</p>
                     <p className="text-xs text-slate-500 mt-1">
-                      {method.id === 'bank_transfer' 
-                        ? 'Gratuit' 
-                        : conversionType === 'cfa_to_mad'
-                          ? 'Inclus'
-                          : selectedRecipient?.country === 'Sénégal' ? '1%' : '1.5%'
-                      }
+                      {getFeeForMethod(method.id)}
                     </p>
                   </Card>
                 ))}
