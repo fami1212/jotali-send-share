@@ -26,9 +26,11 @@ interface Message {
 interface TransferChatProps {
   transferId: string;
   onClose?: () => void;
+  isAdmin?: boolean;
+  embedded?: boolean;
 }
 
-const TransferChat = ({ transferId, onClose }: TransferChatProps) => {
+const TransferChat = ({ transferId, onClose, isAdmin: isAdminProp, embedded = false }: TransferChatProps) => {
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -40,12 +42,16 @@ const TransferChat = ({ transferId, onClose }: TransferChatProps) => {
 
   useEffect(() => {
     const checkAdmin = async () => {
+      if (isAdminProp !== undefined) {
+        setIsAdmin(isAdminProp);
+        return;
+      }
       if (!user) return;
       const { data } = await supabase.rpc('is_admin', { user_id_input: user.id });
       setIsAdmin(!!data);
     };
     checkAdmin();
-  }, [user]);
+  }, [user, isAdminProp]);
 
   useEffect(() => {
     if (transferId) {
@@ -178,16 +184,18 @@ const TransferChat = ({ transferId, onClose }: TransferChatProps) => {
   };
 
   return (
-    <Card className="flex flex-col h-[500px] md:h-[600px] w-full">
+    <Card className={`flex flex-col w-full ${embedded ? 'h-full border-0 shadow-none' : 'h-[500px] md:h-[600px]'}`}>
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b shrink-0">
-        <h3 className="font-semibold text-lg">Messagerie du transfert</h3>
-        {onClose && (
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X className="w-4 h-4" />
-          </Button>
-        )}
-      </div>
+      {!embedded && (
+        <div className="flex items-center justify-between p-4 border-b shrink-0">
+          <h3 className="font-semibold text-lg">Messagerie du transfert</h3>
+          {onClose && (
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <X className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Messages */}
       <ScrollArea className="flex-1 p-4 overflow-y-auto" ref={scrollRef}>
