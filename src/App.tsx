@@ -16,9 +16,7 @@ import Transfer from "./pages/Transfer";
 import History from "./pages/History";
 import Recipients from "./pages/Recipients";
 import Profile from "./pages/Profile";
-import Admin from "./pages/Admin";
-import AdminProofs from "./pages/AdminProofs";
-import UnifiedAdmin from "./pages/UnifiedAdmin";
+import AdminDashboard from "./pages/AdminDashboard";
 import Settings from "./pages/Settings";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
@@ -81,17 +79,7 @@ const App = () => (
             } />
             <Route path="/admin" element={
               <AdminRoute>
-                <UnifiedAdmin />
-              </AdminRoute>
-            } />
-            <Route path="/admin/old" element={
-              <AdminRoute>
-                <Admin />
-              </AdminRoute>
-            } />
-            <Route path="/admin/proofs" element={
-              <AdminRoute>
-                <AdminProofs />
+                <AdminDashboard />
               </AdminRoute>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
