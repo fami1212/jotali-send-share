@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import AddRecipientDialog from './AddRecipientDialog';
+import TransferSuccessAnimation from './TransferSuccessAnimation';
 
 interface Recipient {
   id: string;
@@ -38,6 +39,8 @@ const ModernTransferForm = () => {
   const [notes, setNotes] = useState("");
   const [showAddRecipient, setShowAddRecipient] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [successData, setSuccessData] = useState({ amount: '', currency: '', reference: '' });
 
   // Fixed exchange rates
   const MAD_TO_CFA_RATE = 60; // 1 DHS = 60 CFA
@@ -157,8 +160,13 @@ const ModernTransferForm = () => {
 
       if (error) throw error;
 
-      toast.success("Transfert créé avec succès !");
-      navigate('/history');
+      // Show success animation
+      setSuccessData({
+        amount: formatNumber(total),
+        currency: fromCurrency,
+        reference: referenceNumber
+      });
+      setShowSuccess(true);
     } catch (error: any) {
       console.error('Error:', error);
       toast.error("Erreur lors de la création");
@@ -674,6 +682,15 @@ const ModernTransferForm = () => {
           }}
         />
       </div>
+
+      {/* Success Animation */}
+      <TransferSuccessAnimation
+        isVisible={showSuccess}
+        onComplete={() => navigate('/history')}
+        amount={successData.amount}
+        currency={successData.currency}
+        reference={successData.reference}
+      />
     </div>
   );
 };

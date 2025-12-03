@@ -1,5 +1,4 @@
 import { motion } from 'framer-motion';
-import jotaliLogo from '@/assets/jotali-logo.jpg';
 
 interface SplashScreenProps {
   onComplete: () => void;
@@ -8,7 +7,7 @@ interface SplashScreenProps {
 const SplashScreen = ({ onComplete }: SplashScreenProps) => {
   return (
     <motion.div
-      className="fixed inset-0 z-[100] bg-gradient-to-br from-primary via-primary/95 to-primary/80 flex flex-col items-center justify-center"
+      className="fixed inset-0 z-[100] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col items-center justify-center"
       initial={{ opacity: 1 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -16,11 +15,11 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
     >
       {/* Animated background pattern */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1)_0%,transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.15)_0%,transparent_50%)]" />
         {[...Array(3)].map((_, i) => (
           <motion.div
             key={i}
-            className="absolute rounded-full border border-white/10"
+            className="absolute rounded-full border border-blue-500/20"
             style={{
               width: `${300 + i * 150}px`,
               height: `${300 + i * 150}px`,
@@ -30,12 +29,12 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
             }}
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ 
-              scale: [0.8, 1, 0.8], 
-              opacity: [0, 0.3, 0],
+              scale: [0.8, 1.2, 0.8], 
+              opacity: [0, 0.4, 0],
             }}
             transition={{ 
-              duration: 2.5, 
-              delay: i * 0.3,
+              duration: 3, 
+              delay: i * 0.4,
               repeat: Infinity,
               ease: "easeInOut"
             }}
@@ -55,67 +54,87 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
           damping: 20
         }}
       >
-        {/* Logo with soft glow */}
+        {/* JOTALI Text Logo with gradient */}
         <motion.div
           className="relative"
           animate={{ 
-            y: [0, -8, 0],
+            y: [0, -10, 0],
           }}
           transition={{ 
-            duration: 2, 
+            duration: 2.5, 
             repeat: Infinity,
             ease: "easeInOut"
           }}
         >
-          {/* Glow effect */}
-          <div className="absolute -inset-4 bg-white/20 blur-2xl rounded-full" />
+          {/* Glow effect behind text */}
+          <div className="absolute inset-0 blur-3xl bg-gradient-to-r from-blue-500/40 to-emerald-500/40 scale-150" />
           
-          {/* Logo image */}
-          <div className="relative w-28 h-28 md:w-36 md:h-36 rounded-2xl overflow-hidden shadow-2xl border-4 border-white/30">
-            <motion.img
-              src={jotaliLogo}
-              alt="Jotali Services"
-              className="w-full h-full object-cover"
-              initial={{ scale: 1.2 }}
-              animate={{ scale: 1 }}
-              transition={{ duration: 0.6, ease: "easeOut" }}
-            />
-          </div>
-        </motion.div>
+          {/* Main text */}
+          <motion.h1
+            className="relative text-6xl md:text-8xl font-black tracking-tight"
+            style={{
+              background: 'linear-gradient(135deg, #3B82F6 0%, #10B981 50%, #34D399 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+            }}
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.2, duration: 0.6, type: "spring" }}
+          >
+            JOTALI
+          </motion.h1>
 
-        {/* Brand name with typing effect */}
-        <motion.h1
-          className="mt-6 text-3xl md:text-4xl font-bold text-white tracking-wide drop-shadow-lg"
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.3, duration: 0.5 }}
-        >
-          Jotali Services
-        </motion.h1>
+          {/* Shimmer effect */}
+          <motion.div
+            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12"
+            initial={{ x: '-200%' }}
+            animate={{ x: '200%' }}
+            transition={{ 
+              duration: 1.5, 
+              delay: 0.8,
+              repeat: Infinity,
+              repeatDelay: 2
+            }}
+          />
+        </motion.div>
 
         {/* Tagline */}
         <motion.p
-          className="mt-2 text-white/90 text-sm md:text-base font-medium"
+          className="mt-4 text-slate-400 text-base md:text-lg font-medium tracking-wide"
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.5, duration: 0.5 }}
         >
-          Transferts rapides & sécurisés
+          Services de transfert
+        </motion.p>
+
+        {/* Subtitle */}
+        <motion.p
+          className="mt-1 text-slate-500 text-sm"
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.6, duration: 0.5 }}
+        >
+          Rapide • Sécurisé • Fiable
         </motion.p>
 
         {/* Loading indicator */}
         <motion.div
-          className="mt-10 flex items-center gap-1.5"
+          className="mt-12 flex items-center gap-2"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.7 }}
+          transition={{ delay: 0.8 }}
         >
           {[0, 1, 2].map((i) => (
             <motion.div
               key={i}
-              className="w-2.5 h-2.5 bg-white rounded-full"
+              className="w-2.5 h-2.5 rounded-full"
+              style={{
+                background: i === 0 ? '#3B82F6' : i === 1 ? '#10B981' : '#34D399'
+              }}
               animate={{ 
-                scale: [1, 1.4, 1],
+                scale: [1, 1.5, 1],
                 opacity: [0.5, 1, 0.5]
               }}
               transition={{ 
