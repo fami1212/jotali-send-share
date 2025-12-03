@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
-import jotaliLogo from '@/assets/jotali-logo.jpg';
 
 const BottomNavigation = () => {
   const location = useLocation();
@@ -52,19 +51,23 @@ const BottomNavigation = () => {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 z-50 md:hidden shadow-[0_-4px_20px_rgba(0,0,0,0.1)] border-t border-slate-100 dark:border-slate-800">
-      <div className="flex items-center justify-between px-4 py-2 pb-safe max-w-md mx-auto">
-        {/* Logo - more prominent */}
+      <div className="flex items-center justify-between px-3 py-2 pb-safe max-w-md mx-auto">
+        {/* JOTALI Text Logo */}
         <Link
           to="/dashboard"
-          className="flex items-center gap-2 py-1"
+          className="flex items-center py-1"
         >
-          <div className="w-9 h-9 rounded-xl overflow-hidden shadow-md border-2 border-primary/20">
-            <img 
-              src={jotaliLogo} 
-              alt="Jotali" 
-              className="w-full h-full object-cover"
-            />
-          </div>
+          <span 
+            className="text-lg font-black tracking-tight"
+            style={{
+              background: 'linear-gradient(135deg, #3B82F6 0%, #10B981 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+            }}
+          >
+            JOTALI
+          </span>
         </Link>
 
         {/* Nav items */}
