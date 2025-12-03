@@ -39,9 +39,9 @@ const ModernTransferForm = () => {
   const [showAddRecipient, setShowAddRecipient] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fixed exchange rate: 1 DHS = 60 CFA
-  const MAD_TO_CFA_RATE = 60;
-  const CFA_TO_MAD_RATE = 62.5; // Includes fees
+  // Fixed exchange rates
+  const MAD_TO_CFA_RATE = 60; // 1 DHS = 60 CFA
+  const CFA_TO_MAD_RATE = 62.5; // 1 DHS = 62.5 CFA (fees included)
 
   useEffect(() => {
     loadRecipients();
@@ -57,7 +57,8 @@ const ModernTransferForm = () => {
           const madAmount = Math.ceil(amount / MAD_TO_CFA_RATE);
           setSendAmount(madAmount);
         } else {
-          // CFA to MAD: rate 62.5 includes fees
+          // CFA to MAD: user enters DHS to receive, calculate CFA to send
+          // Rate 1 DHS = 62.5 CFA (fees included)
           const cfaAmount = Math.ceil(amount * CFA_TO_MAD_RATE);
           setSendAmount(cfaAmount);
         }
@@ -235,7 +236,7 @@ const ModernTransferForm = () => {
                 <Card
                   className={`p-6 cursor-pointer transition-all border-2 ${
                     conversionType === 'mad_to_cfa' 
-                      ? 'border-primary bg-primary/5 shadow-lg' 
+                      ? 'border-primary bg-primary/5 shadow-lg scale-[1.02]' 
                       : 'border-slate-200 hover:border-primary/50 hover:shadow'
                   }`}
                   onClick={() => {
@@ -247,15 +248,16 @@ const ModernTransferForm = () => {
                   }}
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-2xl bg-blue-500 flex items-center justify-center shadow">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg">
                       <ArrowRight className="w-7 h-7 text-white" />
                     </div>
                     <div className="flex-1">
                       <h3 className="text-lg font-bold text-slate-900">Envoyer de l'argent</h3>
-                      <p className="text-sm text-slate-500">Dirhams → CFA (1 DHS = 60 CFA)</p>
+                      <p className="text-sm text-slate-500">Maroc → Afrique</p>
+                      <p className="text-xs text-primary font-semibold mt-1">1 DHS = 60 CFA</p>
                     </div>
                     {conversionType === 'mad_to_cfa' && (
-                      <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+                      <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center shadow">
                         <Check className="w-4 h-4 text-white" />
                       </div>
                     )}
@@ -265,7 +267,7 @@ const ModernTransferForm = () => {
                 <Card
                   className={`p-6 cursor-pointer transition-all border-2 ${
                     conversionType === 'cfa_to_mad' 
-                      ? 'border-primary bg-primary/5 shadow-lg' 
+                      ? 'border-primary bg-primary/5 shadow-lg scale-[1.02]' 
                       : 'border-slate-200 hover:border-primary/50 hover:shadow'
                   }`}
                   onClick={() => {
@@ -277,15 +279,16 @@ const ModernTransferForm = () => {
                   }}
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-2xl bg-green-500 flex items-center justify-center shadow">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg">
                       <ArrowLeft className="w-7 h-7 text-white" />
                     </div>
                     <div className="flex-1">
                       <h3 className="text-lg font-bold text-slate-900">Retirer de l'argent</h3>
-                      <p className="text-sm text-slate-500">CFA → Dirhams (depuis l'Afrique)</p>
+                      <p className="text-sm text-slate-500">Afrique → Maroc</p>
+                      <p className="text-xs text-green-600 font-semibold mt-1">1 DHS = 62,5 CFA (frais inclus)</p>
                     </div>
                     {conversionType === 'cfa_to_mad' && (
-                      <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+                      <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center shadow">
                         <Check className="w-4 h-4 text-white" />
                       </div>
                     )}
@@ -313,33 +316,33 @@ const ModernTransferForm = () => {
             >
               <div className="text-center mb-6">
                 <h2 className="text-xl font-bold text-slate-900 mb-1">
-                  {conversionType === 'mad_to_cfa' ? 'Détails de l\'envoi' : 'Détails du retrait'}
+                  {conversionType === 'mad_to_cfa' ? 'Envoi d\'argent' : 'Retrait d\'argent'}
                 </h2>
                 <p className="text-slate-500 text-sm">
                   {conversionType === 'mad_to_cfa' 
-                    ? 'Montant et bénéficiaire' 
-                    : 'Montant à recevoir'}
+                    ? 'Combien votre bénéficiaire doit recevoir ?' 
+                    : 'Combien souhaitez-vous recevoir au Maroc ?'}
                 </p>
               </div>
 
               {/* Amount Input */}
-              <Card className="p-6 border-2 border-slate-200">
+              <Card className="p-6 border-2 border-slate-200 rounded-2xl">
                 <div className="space-y-4">
                   <div>
-                    <Label className="text-sm font-medium text-slate-600">
+                    <Label className="text-sm font-semibold text-slate-700">
                       {conversionType === 'mad_to_cfa' 
-                        ? 'Montant à recevoir (CFA)' 
-                        : 'Montant à recevoir (DHS)'}
+                        ? '💰 Montant que le bénéficiaire recevra' 
+                        : '💰 Montant que vous recevrez'}
                     </Label>
                     <div className="flex items-center gap-3 mt-2">
                       <Input
                         type="number"
                         value={receiveAmount}
                         onChange={(e) => setReceiveAmount(e.target.value)}
-                        placeholder="0"
-                        className="text-2xl h-14 font-bold border-2 text-center"
+                        placeholder="Ex: 10000"
+                        className="text-2xl h-14 font-bold border-2 text-center rounded-xl focus:border-primary"
                       />
-                      <div className="px-4 py-3 bg-slate-100 rounded-xl font-bold text-lg min-w-[80px] text-center">
+                      <div className="px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-bold text-lg min-w-[80px] text-center shadow">
                         {toCurrency}
                       </div>
                     </div>
@@ -348,25 +351,30 @@ const ModernTransferForm = () => {
                   {sendAmount > 0 && (
                     <>
                       <div className="flex items-center justify-center py-2">
-                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
-                          <ArrowRight className="w-4 h-4 text-slate-400 rotate-90" />
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-r from-primary to-purple-500 flex items-center justify-center shadow">
+                          <ArrowRight className="w-5 h-5 text-white rotate-90" />
                         </div>
                       </div>
 
                       <div>
-                        <Label className="text-sm font-medium text-slate-600">Vous envoyez</Label>
+                        <Label className="text-sm font-semibold text-slate-700">
+                          {conversionType === 'mad_to_cfa' ? '📤 Vous devez envoyer' : '📤 Vous devez envoyer'}
+                        </Label>
                         <div className="flex items-center gap-3 mt-2">
-                          <div className="flex-1 text-2xl h-14 font-bold border-2 rounded-lg bg-primary/5 border-primary/20 flex items-center justify-center text-primary">
+                          <div className="flex-1 text-2xl h-14 font-bold border-2 rounded-xl bg-primary/10 border-primary/30 flex items-center justify-center text-primary">
                             {formatNumber(sendAmount)}
                           </div>
-                          <div className="px-4 py-3 bg-primary/10 rounded-xl font-bold text-lg text-primary min-w-[80px] text-center">
+                          <div className="px-4 py-3 bg-gradient-to-r from-primary to-blue-600 text-white rounded-xl font-bold text-lg min-w-[80px] text-center shadow">
                             {fromCurrency}
                           </div>
                         </div>
                       </div>
 
-                      <div className="pt-2 border-t text-sm text-slate-500 text-center">
-                        Taux: 1 DHS = {MAD_TO_CFA_RATE} CFA
+                      <div className="pt-3 border-t border-slate-100 text-center">
+                        <span className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-full text-sm font-medium text-slate-600">
+                          📊 Taux: 1 DHS = {conversionType === 'mad_to_cfa' ? MAD_TO_CFA_RATE : CFA_TO_MAD_RATE} CFA
+                          {conversionType === 'cfa_to_mad' && <span className="text-green-600">(frais inclus)</span>}
+                        </span>
                       </div>
                     </>
                   )}
@@ -476,12 +484,12 @@ const ModernTransferForm = () => {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-slate-400">Taux de change</span>
-                      <span>1 DHS = {MAD_TO_CFA_RATE} CFA</span>
+                      <span>1 DHS = {conversionType === 'mad_to_cfa' ? MAD_TO_CFA_RATE : CFA_TO_MAD_RATE} CFA</span>
                     </div>
                     {conversionType === 'cfa_to_mad' && (
-                      <div className="flex justify-between text-yellow-400">
-                        <span>Frais</span>
-                        <span>Inclus dans le taux</span>
+                      <div className="flex justify-between text-green-400">
+                        <span>Frais de service</span>
+                        <span>✓ Inclus dans le taux</span>
                       </div>
                     )}
                   </div>
