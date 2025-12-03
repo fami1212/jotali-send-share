@@ -526,35 +526,69 @@ const ModernTransferForm = () => {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-6"
             >
-              <div className="text-center mb-6">
+              <div className="text-center mb-4">
                 <h2 className="text-xl font-bold text-slate-900 mb-1">Mode de paiement</h2>
-                <p className="text-slate-500 text-sm">Choisissez comment vous payez</p>
+                <p className="text-slate-500 text-sm">Sélectionnez votre opérateur</p>
               </div>
 
+              {/* Fee explanation for MAD→CFA only */}
+              {conversionType === 'mad_to_cfa' && (
+                <Card className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200 rounded-xl">
+                  <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4" />
+                    Informations sur les frais
+                  </h4>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex items-center justify-between p-2 bg-white/80 rounded-lg">
+                      <span className="text-slate-700 font-medium">Taux de change</span>
+                      <span className="text-primary font-bold">1 DHS = 60 CFA</span>
+                    </div>
+                    <div className="border-t border-blue-200 pt-3">
+                      <p className="font-medium text-blue-900 mb-2">Frais selon le pays :</p>
+                      <div className="grid gap-2">
+                        <div className="flex justify-between items-center p-2 bg-green-50 rounded-lg border border-green-200">
+                          <span className="text-green-800">🇸🇳 Sénégal</span>
+                          <span className="text-green-700 font-semibold">1% (Wave/OM)</span>
+                        </div>
+                        <div className="flex justify-between items-center p-2 bg-amber-50 rounded-lg border border-amber-200">
+                          <span className="text-amber-800">🌍 Autres pays</span>
+                          <span className="text-amber-700 font-semibold">1.5% (Wave/OM)</span>
+                        </div>
+                        <div className="flex justify-between items-center p-2 bg-blue-50 rounded-lg border border-blue-200">
+                          <span className="text-blue-800">🏦 Virement bancaire</span>
+                          <span className="text-blue-700 font-semibold">0% gratuit</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              )}
+
+              {/* Payment methods */}
               <div className="space-y-3">
                 {[
-                  { id: 'wave', label: 'Wave', icon: Smartphone, color: 'bg-yellow-500' },
-                  { id: 'orange_money', label: 'Orange Money', icon: Smartphone, color: 'bg-orange-500' },
-                  { id: 'bank_transfer', label: 'Virement bancaire', icon: Building2, color: 'bg-blue-500' }
+                  { id: 'wave', label: 'Wave', icon: Smartphone, color: 'bg-gradient-to-br from-yellow-400 to-yellow-500' },
+                  { id: 'orange_money', label: 'Orange Money', icon: Smartphone, color: 'bg-gradient-to-br from-orange-400 to-orange-500' },
+                  { id: 'bank_transfer', label: 'Virement bancaire', icon: Building2, color: 'bg-gradient-to-br from-blue-500 to-indigo-500' }
                 ].map((method) => (
                   <Card
                     key={method.id}
-                    className={`p-5 cursor-pointer transition-all border-2 ${
+                    className={`p-4 cursor-pointer transition-all border-2 ${
                       transferMethod === method.id 
-                        ? 'border-primary bg-primary/5 shadow-lg' 
-                        : 'border-slate-200 hover:border-slate-300'
+                        ? 'border-primary bg-primary/5 shadow-lg scale-[1.02]' 
+                        : 'border-slate-200 hover:border-slate-300 hover:shadow'
                     }`}
                     onClick={() => setTransferMethod(method.id)}
                   >
                     <div className="flex items-center gap-4">
-                      <div className={`w-12 h-12 ${method.color} rounded-xl flex items-center justify-center`}>
+                      <div className={`w-12 h-12 ${method.color} rounded-xl flex items-center justify-center shadow-md`}>
                         <method.icon className="w-6 h-6 text-white" />
                       </div>
                       <div className="flex-1">
                         <p className="font-semibold text-slate-900">{method.label}</p>
                       </div>
                       {transferMethod === method.id && (
-                        <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+                        <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center shadow">
                           <Check className="w-4 h-4 text-white" />
                         </div>
                       )}
@@ -565,7 +599,7 @@ const ModernTransferForm = () => {
 
               {/* Bank RIBs */}
               {transferMethod === 'bank_transfer' && (
-                <Card className="p-4 bg-blue-50 border-blue-200">
+                <Card className="p-4 bg-blue-50 border-blue-200 rounded-xl">
                   <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
                     <Building2 className="w-4 h-4" />
                     Nos RIB bancaires
@@ -590,47 +624,43 @@ const ModernTransferForm = () => {
 
               {/* Final Summary with Fees */}
               {transferMethod && (
-                <Card className="p-4 bg-slate-900 text-white rounded-xl">
-                  <h4 className="font-semibold mb-3">Total à payer</h4>
+                <Card className="p-4 bg-gradient-to-br from-slate-800 to-slate-900 text-white rounded-xl shadow-lg">
+                  <h4 className="font-semibold mb-3 flex items-center gap-2">
+                    💳 Total à payer
+                  </h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-slate-300">Montant</span>
+                      <span className="text-slate-300">Montant de base</span>
                       <span>{formatNumber(sendAmount)} {fromCurrency}</span>
                     </div>
-                    {conversionType === 'mad_to_cfa' && fees > 0 && (
+                    {conversionType === 'mad_to_cfa' && (
                       <div className="flex justify-between">
-                        <span className="text-slate-300">Frais</span>
-                        <span>{formatNumber(fees)} {fromCurrency}</span>
+                        <span className="text-slate-300">
+                          Frais {transferMethod === 'bank_transfer' ? '(gratuit)' : `(${isSenegal(selectedRecipient?.country) ? '1%' : '1.5%'})`}
+                        </span>
+                        <span className={fees === 0 ? 'text-green-400' : ''}>{formatNumber(fees)} {fromCurrency}</span>
                       </div>
                     )}
-                    <div className="flex justify-between pt-2 border-t border-slate-700 font-bold text-lg">
+                    {conversionType === 'cfa_to_mad' && (
+                      <div className="flex justify-between text-green-400">
+                        <span>Frais de service</span>
+                        <span>✓ Inclus</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between pt-3 border-t border-slate-600 font-bold text-lg">
                       <span>Total</span>
-                      <span>{formatNumber(total)} {fromCurrency}</span>
+                      <span className="text-green-400">{formatNumber(total)} {fromCurrency}</span>
                     </div>
                   </div>
                 </Card>
               )}
 
-              {conversionType === 'mad_to_cfa' && (transferMethod === 'wave' || transferMethod === 'orange_money') && (
-                <div className="p-4 bg-amber-50 rounded-xl flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-amber-500 mt-0.5" />
-                  <div className="text-sm text-amber-800">
-                    <p>
-                      {isSenegal(selectedRecipient?.country) 
-                        ? 'Frais réduits appliqués pour le Sénégal'
-                        : 'Frais standard appliqués'
-                      }
-                    </p>
-                  </div>
-                </div>
-              )}
-
               <Button 
-                className="w-full h-14 text-lg font-semibold rounded-2xl"
+                className="w-full h-14 text-lg font-semibold rounded-2xl shadow-lg"
                 onClick={handleSubmit}
                 disabled={isSubmitting || !transferMethod}
               >
-                {isSubmitting ? "Traitement..." : "Confirmer le transfert"}
+                {isSubmitting ? "Traitement..." : "✓ Confirmer le transfert"}
               </Button>
             </motion.div>
           )}
