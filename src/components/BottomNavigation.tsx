@@ -1,13 +1,15 @@
-import { Home, ArrowRightLeft, Clock, Users, User } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Home, ArrowRightLeft, Clock, LogOut } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
+import jotaliLogo from '@/assets/jotali-logo.jpg';
 
 const BottomNavigation = () => {
   const location = useLocation();
-  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
@@ -23,6 +25,11 @@ const BottomNavigation = () => {
     } catch (error) {
       setIsAdmin(false);
     }
+  };
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/auth');
   };
 
   const navItems = [
@@ -41,22 +48,24 @@ const BottomNavigation = () => {
       label: 'Historique',
       path: '/history',
     },
-    {
-      icon: Users,
-      label: 'Contacts',
-      path: '/recipients',
-    },
-    {
-      icon: User,
-      label: 'Profil',
-      path: '/profile',
-    }
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 z-50 md:hidden">
-      <div className="h-[1px] bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
-      <div className="flex items-center justify-around px-2 py-1 pb-safe">
+    <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 z-50 md:hidden shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+      <div className="flex items-center justify-around px-2 py-2 pb-safe">
+        {/* Logo */}
+        <Link
+          to="/dashboard"
+          className="flex flex-col items-center justify-center py-1 px-2"
+        >
+          <img 
+            src={jotaliLogo} 
+            alt="Jotali" 
+            className="w-8 h-8 rounded-lg object-cover"
+          />
+          <span className="text-[9px] mt-1 font-medium text-primary">Jotali</span>
+        </Link>
+
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
           
@@ -64,7 +73,7 @@ const BottomNavigation = () => {
             <Link
               key={item.path}
               to={item.path}
-              className="relative flex flex-col items-center justify-center py-2 px-4 min-w-[60px]"
+              className="relative flex flex-col items-center justify-center py-1 px-3"
             >
               <div className="relative">
                 {isActive && (
@@ -98,6 +107,15 @@ const BottomNavigation = () => {
             </Link>
           );
         })}
+
+        {/* Logout button */}
+        <button
+          onClick={handleLogout}
+          className="flex flex-col items-center justify-center py-1 px-3"
+        >
+          <LogOut className="w-5 h-5 text-slate-400 stroke-[1.5]" />
+          <span className="text-[10px] mt-1 font-medium text-slate-400">Sortir</span>
+        </button>
       </div>
       
       {/* Admin badge */}
