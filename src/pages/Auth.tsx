@@ -1,12 +1,13 @@
-import { useState } from 'react';
-import { Navigate } from 'react-router-dom';
-import { ArrowRightLeft, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -19,8 +20,26 @@ const Auth = () => {
 
   const { user, signIn, signUp } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
-  if (user) return <Navigate to="/dashboard" replace />;
+  // Redirection basée sur le rôle
+  useEffect(() => {
+    const checkAndRedirect = async () => {
+      if (user) {
+        try {
+          const { data: isAdmin } = await supabase.rpc('is_admin');
+          if (isAdmin) {
+            navigate('/admin', { replace: true });
+          } else {
+            navigate('/dashboard', { replace: true });
+          }
+        } catch {
+          navigate('/dashboard', { replace: true });
+        }
+      }
+    };
+    checkAndRedirect();
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,6 +52,7 @@ const Auth = () => {
           toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
         } else {
           toast({ title: 'Connexion réussie' });
+          // La redirection se fait via useEffect
         }
       } else {
         const { error, data } = await signUp(email, password, firstName, lastName);
@@ -52,16 +72,35 @@ const Auth = () => {
     }
   };
 
+  // Ne pas afficher le formulaire si l'utilisateur est déjà connecté
+  if (user) {
+    return (
+      <div className="min-h-screen bg-gradient-hero flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Redirection en cours...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Logo */}
+        {/* Logo JOTALI */}
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center space-x-2 mb-4">
-            <div className="w-12 h-12 bg-background rounded-full flex items-center justify-center">
-              <ArrowRightLeft className="w-7 h-7 text-primary" />
-            </div>
-            <span className="text-3xl font-bold text-foreground">TransferApp</span>
+          <div className="flex items-center justify-center mb-4">
+            <span 
+              className="text-4xl font-black tracking-tight"
+              style={{
+                background: 'linear-gradient(135deg, #3B82F6 0%, #10B981 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}
+            >
+              JOTALI
+            </span>
           </div>
           <p className="text-muted-foreground">
             {isLogin ? 'Connectez-vous à votre compte' : 'Créez votre compte'}
@@ -161,7 +200,7 @@ const Auth = () => {
             {/* Bouton de soumission */}
             <Button
               type="submit"
-              className="w-full bg-gradient-primary hover:opacity-90"
+              className="w-full bg-gradient-to-r from-blue-500 to-emerald-500 hover:opacity-90 text-white"
               size="lg"
               disabled={loading}
             >
