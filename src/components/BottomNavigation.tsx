@@ -1,4 +1,4 @@
-import { Home, ArrowRightLeft, Clock, LogOut } from 'lucide-react';
+import { Home, ArrowRightLeft, Clock, Users, User, LogOut } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -47,6 +47,16 @@ const BottomNavigation = () => {
       label: 'Historique',
       path: '/history',
     },
+    {
+      icon: Users,
+      label: 'Bénéficiaires',
+      path: '/recipients',
+    },
+    {
+      icon: User,
+      label: 'Profil',
+      path: '/profile',
+    },
   ];
 
   return (
@@ -79,7 +89,7 @@ const BottomNavigation = () => {
               <Link
                 key={item.path}
                 to={item.path}
-                className="relative flex flex-col items-center justify-center py-1 px-4"
+                className="relative flex flex-col items-center justify-center py-1 px-2"
               >
                 <div className="relative">
                   {isActive && (
