@@ -44,6 +44,7 @@ const Navbar = () => {
     { name: 'Nouveau transfert', href: '/transfer' },
     { name: 'Historique', href: '/history' },
     { name: 'Bénéficiaires', href: '/recipients' },
+    { name: 'Profil', href: '/profile' },
   ];
 
   const NavLinks = ({ mobile = false, onClose = () => {} }) => (
