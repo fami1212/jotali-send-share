@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Navbar from '@/components/Navbar';
 import BottomNavigation from '@/components/BottomNavigation';
+import BiometricSetup from '@/components/BiometricSetup';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Bell, Shield, Smartphone } from 'lucide-react';
+import { Bell, Shield, Smartphone, Download } from 'lucide-react';
 
 const Settings = () => {
   const { user } = useAuth();
@@ -109,6 +110,9 @@ const Settings = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Biometric Authentication */}
+            <BiometricSetup />
+            
             <Button variant="outline" className="w-full justify-start">
               <Smartphone className="w-4 h-4 mr-2" />
               Configurer l'authentification à deux facteurs
@@ -116,6 +120,32 @@ const Settings = () => {
             <Button variant="outline" className="w-full justify-start">
               Changer le mot de passe
             </Button>
+          </CardContent>
+        </Card>
+
+        {/* Application */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Download className="w-5 h-5" />
+              Application
+            </CardTitle>
+            <CardDescription>
+              Installez l'application sur votre appareil
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="p-4 rounded-lg bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20">
+              <p className="text-sm text-muted-foreground mb-3">
+                Installez Jotali sur votre écran d'accueil pour un accès rapide et une expérience hors-ligne.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                <strong>Sur iPhone:</strong> Appuyez sur le bouton Partager puis "Sur l'écran d'accueil"
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                <strong>Sur Android:</strong> Appuyez sur le menu ⋮ puis "Installer l'application"
+              </p>
+            </div>
           </CardContent>
         </Card>
       </main>

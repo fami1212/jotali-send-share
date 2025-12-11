@@ -10,6 +10,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { ChatProvider } from "./contexts/ChatContext";
 import GlobalChat from "./components/GlobalChat";
 import SplashScreen from "./components/SplashScreen";
+import Onboarding from "./components/Onboarding";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
 import Index from "./pages/Index";
@@ -31,9 +32,13 @@ const queryClient = new QueryClient();
 
 const AppContent = () => {
   const [showSplash, setShowSplash] = useState(() => {
-    // Only show splash once per session
     const hasSeenSplash = sessionStorage.getItem('hasSeenSplash');
     return !hasSeenSplash;
+  });
+
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding');
+    return !hasSeenOnboarding;
   });
 
   const handleSplashComplete = () => {
@@ -41,10 +46,18 @@ const AppContent = () => {
     setShowSplash(false);
   };
 
+  const handleOnboardingComplete = () => {
+    localStorage.setItem('hasSeenOnboarding', 'true');
+    setShowOnboarding(false);
+  };
+
   return (
     <>
       <AnimatePresence>
         {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
+      </AnimatePresence>
+      <AnimatePresence>
+        {!showSplash && showOnboarding && <Onboarding onComplete={handleOnboardingComplete} />}
       </AnimatePresence>
       <Toaster />
       <Sonner />
