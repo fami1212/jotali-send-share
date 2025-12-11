@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, Fingerprint } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBiometricAuth } from '@/hooks/useBiometricAuth';
 import { supabase } from '@/integrations/supabase/client';
 
 const Auth = () => {
@@ -17,10 +18,12 @@ const Auth = () => {
   const [lastName, setLastName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [biometricLoading, setBiometricLoading] = useState(false);
 
   const { user, signIn, signUp } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { isSupported, isEnabled, authenticate } = useBiometricAuth();
 
   // Redirection basée sur le rôle
   useEffect(() => {
@@ -40,6 +43,19 @@ const Auth = () => {
     };
     checkAndRedirect();
   }, [user, navigate]);
+
+  const handleBiometricLogin = async () => {
+    setBiometricLoading(true);
+    try {
+      const success = await authenticate();
+      if (success) {
+        // Biometric auth succeeded - the user is already logged in via saved credentials
+        toast({ title: 'Connexion biométrique réussie' });
+      }
+    } finally {
+      setBiometricLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -202,10 +218,25 @@ const Auth = () => {
               type="submit"
               className="w-full bg-gradient-to-r from-blue-500 to-emerald-500 hover:opacity-90 text-white"
               size="lg"
-              disabled={loading}
+              disabled={loading || biometricLoading}
             >
               {loading ? 'Chargement...' : isLogin ? 'Se connecter' : 'Créer un compte'}
             </Button>
+
+            {/* Biometric Login Button */}
+            {isLogin && isSupported && isEnabled && (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                size="lg"
+                onClick={handleBiometricLogin}
+                disabled={loading || biometricLoading}
+              >
+                <Fingerprint className="w-5 h-5 mr-2" />
+                {biometricLoading ? 'Vérification...' : 'Connexion biométrique'}
+              </Button>
+            )}
 
             {/* Basculer entre connexion et inscription */}
             <div className="text-center">
