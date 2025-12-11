@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Bell, Shield, Smartphone, Download } from 'lucide-react';
+import { Bell, Shield, Smartphone, Download, RefreshCw } from 'lucide-react';
 
 const Settings = () => {
   const { user } = useAuth();
@@ -112,6 +112,24 @@ const Settings = () => {
           <CardContent className="space-y-4">
             {/* Biometric Authentication */}
             <BiometricSetup />
+            
+            {/* Reset biometric prompt */}
+            <Button 
+              variant="outline" 
+              className="w-full justify-start"
+              onClick={() => {
+                if (user?.id) {
+                  localStorage.removeItem(`biometric_prompt_shown_${user.id}`);
+                  toast({
+                    title: "Prompt réinitialisé",
+                    description: "Le prompt biométrique apparaîtra à la prochaine connexion",
+                  });
+                }
+              }}
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Réactiver le prompt biométrique
+            </Button>
             
             <Button variant="outline" className="w-full justify-start">
               <Smartphone className="w-4 h-4 mr-2" />
