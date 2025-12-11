@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useRealtimeNotifications } from '@/hooks/useRealtimeNotifications';
+import { BiometricPrompt } from '@/components/BiometricPrompt';
 
 interface AuthContextType {
   user: User | null;
@@ -99,6 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut }}>
       {children}
+      <BiometricPrompt userId={user?.id} />
     </AuthContext.Provider>
   );
 }
