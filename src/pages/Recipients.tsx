@@ -13,6 +13,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import Navbar from '@/components/Navbar';
 import BottomNavigation from '@/components/BottomNavigation';
 import { Link } from 'react-router-dom';
+import AnimatedElement from '@/components/AnimatedElement';
+import { AnimatedList, AnimatedItem } from '@/components/AnimatedList';
 
 interface Recipient {
   id: string;
@@ -143,99 +145,105 @@ const Recipients = () => {
       
       <div className="container mx-auto px-4 py-6 max-w-lg md:max-w-4xl">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Bénéficiaires</h1>
-            <p className="text-slate-500 text-sm">Vos contacts de transfert</p>
+        <AnimatedElement delay={0} direction="down">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">Bénéficiaires</h1>
+              <p className="text-slate-500 text-sm">Vos contacts de transfert</p>
+            </div>
+            <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="hover:scale-105 transition-transform">
+              <Plus className="w-4 h-4 mr-2" />
+              Ajouter
+            </Button>
           </div>
-          <Button onClick={() => { resetForm(); setIsDialogOpen(true); }}>
-            <Plus className="w-4 h-4 mr-2" />
-            Ajouter
-          </Button>
-        </div>
+        </AnimatedElement>
 
         {/* Recipients List */}
         {recipients.length > 0 ? (
-          <div className="grid gap-4 md:grid-cols-2">
+          <AnimatedList className="grid gap-4 md:grid-cols-2">
             {recipients.map((recipient) => (
-              <Card key={recipient.id} className="p-4">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <User className="w-6 h-6 text-blue-600" />
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-slate-900 truncate">{recipient.name}</h3>
-                    
-                    <div className="flex items-center gap-1 text-sm text-slate-500 mt-1">
-                      <Phone className="w-3 h-3" />
-                      {recipient.phone}
+              <AnimatedItem key={recipient.id}>
+                <Card className="p-4 hover:shadow-md transition-shadow">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <User className="w-6 h-6 text-blue-600" />
                     </div>
                     
-                    <div className="flex items-center gap-1 text-sm text-slate-500">
-                      <MapPin className="w-3 h-3" />
-                      {recipient.country}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-slate-900 truncate">{recipient.name}</h3>
+                      
+                      <div className="flex items-center gap-1 text-sm text-slate-500 mt-1">
+                        <Phone className="w-3 h-3" />
+                        {recipient.phone}
+                      </div>
+                      
+                      <div className="flex items-center gap-1 text-sm text-slate-500">
+                        <MapPin className="w-3 h-3" />
+                        {recipient.country}
+                      </div>
+
+                      {recipient.transfer_number && (
+                        <p className="text-xs text-slate-400 mt-1 truncate">
+                          N° transfert: {recipient.transfer_number}
+                        </p>
+                      )}
                     </div>
 
-                    {recipient.transfer_number && (
-                      <p className="text-xs text-slate-400 mt-1 truncate">
-                        N° transfert: {recipient.transfer_number}
-                      </p>
-                    )}
+                    <div className="flex flex-col gap-1">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(recipient)}>
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600">
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Supprimer ce bénéficiaire ?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Cette action est irréversible.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Annuler</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(recipient.id)} className="bg-red-500 hover:bg-red-600">
+                              Supprimer
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
 
-                  <div className="flex flex-col gap-1">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(recipient)}>
-                      <Edit className="w-4 h-4" />
+                  <Link to={`/transfer?recipient=${recipient.id}`}>
+                    <Button variant="outline" size="sm" className="w-full mt-3 hover:scale-[1.02] transition-transform">
+                      <Send className="w-4 h-4 mr-2" />
+                      Envoyer de l'argent
                     </Button>
-                    
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600">
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Supprimer ce bénéficiaire ?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Cette action est irréversible.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Annuler</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDelete(recipient.id)} className="bg-red-500 hover:bg-red-600">
-                            Supprimer
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </div>
-
-                <Link to={`/transfer?recipient=${recipient.id}`}>
-                  <Button variant="outline" size="sm" className="w-full mt-3">
-                    <Send className="w-4 h-4 mr-2" />
-                    Envoyer de l'argent
-                  </Button>
-                </Link>
-              </Card>
+                  </Link>
+                </Card>
+              </AnimatedItem>
             ))}
-          </div>
+          </AnimatedList>
         ) : (
-          <Card className="p-8 text-center">
-            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <User className="w-8 h-8 text-slate-400" />
-            </div>
-            <h3 className="font-semibold text-slate-900 mb-2">Aucun bénéficiaire</h3>
-            <p className="text-slate-500 text-sm mb-4">
-              Ajoutez vos contacts pour envoyer de l'argent rapidement
-            </p>
-            <Button onClick={() => setIsDialogOpen(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Ajouter un bénéficiaire
-            </Button>
-          </Card>
+          <AnimatedElement delay={1}>
+            <Card className="p-8 text-center">
+              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <User className="w-8 h-8 text-slate-400" />
+              </div>
+              <h3 className="font-semibold text-slate-900 mb-2">Aucun bénéficiaire</h3>
+              <p className="text-slate-500 text-sm mb-4">
+                Ajoutez vos contacts pour envoyer de l'argent rapidement
+              </p>
+              <Button onClick={() => setIsDialogOpen(true)} className="hover:scale-105 transition-transform">
+                <Plus className="w-4 h-4 mr-2" />
+                Ajouter un bénéficiaire
+              </Button>
+            </Card>
+          </AnimatedElement>
         )}
       </div>
 
