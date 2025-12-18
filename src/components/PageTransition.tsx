@@ -8,22 +8,22 @@ interface PageTransitionProps {
 const pageVariants = {
   initial: {
     opacity: 0,
-    y: 10,
+    x: 60,
   },
   animate: {
     opacity: 1,
-    y: 0,
+    x: 0,
   },
   exit: {
     opacity: 0,
-    y: -10,
+    x: -60,
   },
 };
 
 const pageTransition = {
-  type: "tween" as const,
-  ease: "easeInOut" as const,
-  duration: 0.2,
+  type: "spring" as const,
+  stiffness: 300,
+  damping: 30,
 };
 
 const PageTransition = ({ children }: PageTransitionProps) => {
