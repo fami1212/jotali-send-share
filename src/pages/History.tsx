@@ -12,6 +12,8 @@ import { useChat } from '@/contexts/ChatContext';
 import Navbar from '@/components/Navbar';
 import BottomNavigation from '@/components/BottomNavigation';
 import UploadProofDialog from '@/components/UploadProofDialog';
+import AnimatedElement from '@/components/AnimatedElement';
+import { AnimatedList, AnimatedItem } from '@/components/AnimatedList';
 
 interface Transfer {
   id: string;
@@ -133,131 +135,139 @@ const History = () => {
       
       <div className="container mx-auto px-4 py-6 max-w-lg md:max-w-4xl">
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-900">Historique</h1>
-          <p className="text-slate-500 text-sm">Vos transferts d'argent</p>
-        </div>
+        <AnimatedElement delay={0} direction="down">
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-slate-900">Historique</h1>
+            <p className="text-slate-500 text-sm">Vos transferts d'argent</p>
+          </div>
+        </AnimatedElement>
 
         {/* Filters */}
-        <Card className="p-4 mb-6">
-          <div className="flex gap-3">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <Input
-                placeholder="Rechercher..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+        <AnimatedElement delay={1}>
+          <Card className="p-4 mb-6">
+            <div className="flex gap-3">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input
+                  placeholder="Rechercher..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[140px]">
+                  <Filter className="w-4 h-4 mr-2" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous</SelectItem>
+                  <SelectItem value="pending">En attente</SelectItem>
+                  <SelectItem value="awaiting_admin">En traitement</SelectItem>
+                  <SelectItem value="completed">Terminés</SelectItem>
+                  <SelectItem value="rejected">Rejetés</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[140px]">
-                <Filter className="w-4 h-4 mr-2" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous</SelectItem>
-                <SelectItem value="pending">En attente</SelectItem>
-                <SelectItem value="awaiting_admin">En traitement</SelectItem>
-                <SelectItem value="completed">Terminés</SelectItem>
-                <SelectItem value="rejected">Rejetés</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          {(searchTerm || statusFilter !== 'all') && (
-            <div className="mt-3 flex items-center justify-between">
-              <span className="text-sm text-slate-500">{filteredTransfers.length} résultat(s)</span>
-              <Button variant="ghost" size="sm" onClick={() => { setSearchTerm(''); setStatusFilter('all'); }}>
-                <X className="w-4 h-4 mr-1" /> Réinitialiser
-              </Button>
-            </div>
-          )}
-        </Card>
+            {(searchTerm || statusFilter !== 'all') && (
+              <div className="mt-3 flex items-center justify-between">
+                <span className="text-sm text-slate-500">{filteredTransfers.length} résultat(s)</span>
+                <Button variant="ghost" size="sm" onClick={() => { setSearchTerm(''); setStatusFilter('all'); }}>
+                  <X className="w-4 h-4 mr-1" /> Réinitialiser
+                </Button>
+              </div>
+            )}
+          </Card>
+        </AnimatedElement>
 
         {/* Transfers List */}
         {filteredTransfers.length > 0 ? (
-          <div className="space-y-3">
+          <AnimatedList className="space-y-3">
             {filteredTransfers.map((transfer) => {
               const statusInfo = getStatusInfo(transfer.status);
               const isEnvoi = transfer.from_currency === 'MAD';
               
               return (
-                <Card key={transfer.id} className="p-4 hover:shadow-md transition-shadow">
-                  <div className="flex items-start gap-4">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isEnvoi ? 'bg-blue-100' : 'bg-green-100'}`}>
-                      {isEnvoi ? (
-                        <ArrowUpRight className="w-5 h-5 text-blue-600" />
-                      ) : (
-                        <ArrowDownLeft className="w-5 h-5 text-green-600" />
-                      )}
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <p className="font-semibold text-slate-900">{getTransferType(transfer)}</p>
-                          <p className="text-xs text-slate-500">{transfer.reference_number}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold text-slate-900">
-                            {formatCurrency(transfer.converted_amount, transfer.to_currency)}
-                          </p>
-                          <p className="text-xs text-slate-500">{formatDate(transfer.created_at)}</p>
-                        </div>
+                <AnimatedItem key={transfer.id}>
+                  <Card className="p-4 hover:shadow-md transition-shadow">
+                    <div className="flex items-start gap-4">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isEnvoi ? 'bg-blue-100' : 'bg-green-100'}`}>
+                        {isEnvoi ? (
+                          <ArrowUpRight className="w-5 h-5 text-blue-600" />
+                        ) : (
+                          <ArrowDownLeft className="w-5 h-5 text-green-600" />
+                        )}
                       </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <p className="font-semibold text-slate-900">{getTransferType(transfer)}</p>
+                            <p className="text-xs text-slate-500">{transfer.reference_number}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-slate-900">
+                              {formatCurrency(transfer.converted_amount, transfer.to_currency)}
+                            </p>
+                            <p className="text-xs text-slate-500">{formatDate(transfer.created_at)}</p>
+                          </div>
+                        </div>
 
-                      {transfer.recipients && (
-                        <p className="text-sm text-slate-600 mb-2">
-                          → {transfer.recipients.name} ({transfer.recipients.country})
-                        </p>
-                      )}
+                        {transfer.recipients && (
+                          <p className="text-sm text-slate-600 mb-2">
+                            → {transfer.recipients.name} ({transfer.recipients.country})
+                          </p>
+                        )}
 
-                      <div className="flex items-center justify-between">
-                        <Badge className={`${statusInfo.color} border-0`}>
-                          {statusInfo.label}
-                        </Badge>
-                        
-                        <div className="flex gap-1">
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => setSelectedTransfer(transfer)}
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
+                        <div className="flex items-center justify-between">
+                          <Badge className={`${statusInfo.color} border-0`}>
+                            {statusInfo.label}
+                          </Badge>
                           
-                          {!transfer.proof_image_url && ['pending', 'awaiting_admin'].includes(transfer.status) && (
+                          <div className="flex gap-1">
                             <Button 
                               variant="ghost" 
                               size="sm"
-                              onClick={() => {
-                                setSelectedProofId(transfer.id);
-                                setShowUploadProof(true);
-                              }}
+                              onClick={() => setSelectedTransfer(transfer)}
                             >
-                              <Upload className="w-4 h-4" />
+                              <Eye className="w-4 h-4" />
                             </Button>
-                          )}
-                          
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => openChat(transfer.id)}
-                          >
-                            <MessageSquare className="w-4 h-4" />
-                          </Button>
+                            
+                            {!transfer.proof_image_url && ['pending', 'awaiting_admin'].includes(transfer.status) && (
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedProofId(transfer.id);
+                                  setShowUploadProof(true);
+                                }}
+                              >
+                                <Upload className="w-4 h-4" />
+                              </Button>
+                            )}
+                            
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => openChat(transfer.id)}
+                            >
+                              <MessageSquare className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </Card>
+                  </Card>
+                </AnimatedItem>
               );
             })}
-          </div>
+          </AnimatedList>
         ) : (
-          <Card className="p-8 text-center">
-            <p className="text-slate-500">Aucun transfert trouvé</p>
-          </Card>
+          <AnimatedElement delay={2}>
+            <Card className="p-8 text-center">
+              <p className="text-slate-500">Aucun transfert trouvé</p>
+            </Card>
+          </AnimatedElement>
         )}
       </div>
 

@@ -16,6 +16,8 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
+import AnimatedElement from '@/components/AnimatedElement';
+import { AnimatedList, AnimatedItem } from '@/components/AnimatedList';
 
 interface Transfer {
   id: string;
@@ -106,62 +108,74 @@ const ModernDashboard = () => {
       <div className="container mx-auto px-4 py-6 max-w-lg">
         
         {/* Header */}
-        <div className="mb-6">
-          <p className="text-slate-500 text-sm">Bonjour,</p>
-          <h1 className="text-2xl font-bold text-slate-900">
-            {profile?.first_name || 'Bienvenue'} 👋
-          </h1>
-        </div>
+        <AnimatedElement delay={0} direction="down">
+          <div className="mb-6">
+            <p className="text-slate-500 text-sm">Bonjour,</p>
+            <h1 className="text-2xl font-bold text-slate-900">
+              {profile?.first_name || 'Bienvenue'} 👋
+            </h1>
+          </div>
+        </AnimatedElement>
 
         {/* Quick Action */}
-        <Link to="/transfer">
-          <Card className="p-6 bg-gradient-to-r from-blue-600 to-purple-600 text-white mb-6 cursor-pointer hover:shadow-lg transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-100 text-sm mb-1">Nouveau transfert</p>
-                <p className="text-xl font-bold">Envoyer ou retirer</p>
+        <AnimatedElement delay={1}>
+          <Link to="/transfer">
+            <Card className="p-6 bg-gradient-to-r from-blue-600 to-purple-600 text-white mb-6 cursor-pointer hover:shadow-lg transition-shadow hover:scale-[1.02] transform">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-blue-100 text-sm mb-1">Nouveau transfert</p>
+                  <p className="text-xl font-bold">Envoyer ou retirer</p>
+                </div>
+                <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center">
+                  <Send className="w-7 h-7" />
+                </div>
               </div>
-              <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center">
-                <Send className="w-7 h-7" />
-              </div>
-            </div>
-          </Card>
-        </Link>
+            </Card>
+          </Link>
+        </AnimatedElement>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-3 mb-6">
-          <Card className="p-4 text-center">
-            <p className="text-2xl font-bold text-slate-900">{stats.totalTransfers}</p>
-            <p className="text-xs text-slate-500">Total</p>
-          </Card>
-          <Card className="p-4 text-center">
-            <p className="text-2xl font-bold text-amber-600">{stats.pending}</p>
-            <p className="text-xs text-slate-500">En attente</p>
-          </Card>
-          <Card className="p-4 text-center">
-            <p className="text-2xl font-bold text-green-600">{stats.completed}</p>
-            <p className="text-xs text-slate-500">Terminés</p>
-          </Card>
-        </div>
+        <AnimatedList className="grid grid-cols-3 gap-3 mb-6">
+          <AnimatedItem>
+            <Card className="p-4 text-center hover:shadow-md transition-shadow">
+              <p className="text-2xl font-bold text-slate-900">{stats.totalTransfers}</p>
+              <p className="text-xs text-slate-500">Total</p>
+            </Card>
+          </AnimatedItem>
+          <AnimatedItem>
+            <Card className="p-4 text-center hover:shadow-md transition-shadow">
+              <p className="text-2xl font-bold text-amber-600">{stats.pending}</p>
+              <p className="text-xs text-slate-500">En attente</p>
+            </Card>
+          </AnimatedItem>
+          <AnimatedItem>
+            <Card className="p-4 text-center hover:shadow-md transition-shadow">
+              <p className="text-2xl font-bold text-green-600">{stats.completed}</p>
+              <p className="text-xs text-slate-500">Terminés</p>
+            </Card>
+          </AnimatedItem>
+        </AnimatedList>
 
         {/* Quick Links */}
-        <div className="grid grid-cols-4 gap-2 mb-6">
+        <AnimatedList className="grid grid-cols-4 gap-2 mb-6">
           {[
             { icon: Send, label: 'Transfert', href: '/transfer', color: 'bg-blue-500' },
             { icon: History, label: 'Historique', href: '/history', color: 'bg-purple-500' },
             { icon: Users, label: 'Contacts', href: '/recipients', color: 'bg-green-500' },
             { icon: User, label: 'Profil', href: '/profile', color: 'bg-slate-500' }
           ].map((item) => (
-            <Link key={item.href} to={item.href}>
-              <Card className="p-3 text-center hover:shadow-md transition-shadow cursor-pointer">
-                <div className={`w-10 h-10 ${item.color} rounded-xl flex items-center justify-center mx-auto mb-2`}>
-                  <item.icon className="w-5 h-5 text-white" />
-                </div>
-                <p className="text-xs font-medium text-slate-700">{item.label}</p>
-              </Card>
-            </Link>
+            <AnimatedItem key={item.href}>
+              <Link to={item.href}>
+                <Card className="p-3 text-center hover:shadow-md transition-all cursor-pointer hover:scale-105 transform">
+                  <div className={`w-10 h-10 ${item.color} rounded-xl flex items-center justify-center mx-auto mb-2`}>
+                    <item.icon className="w-5 h-5 text-white" />
+                  </div>
+                  <p className="text-xs font-medium text-slate-700">{item.label}</p>
+                </Card>
+              </Link>
+            </AnimatedItem>
           ))}
-        </div>
+        </AnimatedList>
 
         {/* Recent Transfers */}
         <div className="mb-4 flex items-center justify-between">
@@ -170,52 +184,56 @@ const ModernDashboard = () => {
         </div>
 
         {recentTransfers.length > 0 ? (
-          <div className="space-y-3">
+          <AnimatedList className="space-y-3">
             {recentTransfers.map((transfer) => {
               const statusInfo = getStatusInfo(transfer.status);
               const isEnvoi = transfer.from_currency === 'MAD';
               
               return (
-                <Card key={transfer.id} className="p-4">
-                  <div className="flex items-center gap-4">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isEnvoi ? 'bg-blue-100' : 'bg-green-100'}`}>
-                      {isEnvoi ? (
-                        <ArrowUpRight className="w-5 h-5 text-blue-600" />
-                      ) : (
-                        <ArrowDownLeft className="w-5 h-5 text-green-600" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="font-semibold text-slate-900">{getTransferType(transfer)}</p>
-                        <p className="font-bold text-slate-900">
-                          {formatCurrency(transfer.converted_amount, transfer.to_currency)}
-                        </p>
+                <AnimatedItem key={transfer.id}>
+                  <Card className="p-4 hover:shadow-md transition-shadow">
+                    <div className="flex items-center gap-4">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isEnvoi ? 'bg-blue-100' : 'bg-green-100'}`}>
+                        {isEnvoi ? (
+                          <ArrowUpRight className="w-5 h-5 text-blue-600" />
+                        ) : (
+                          <ArrowDownLeft className="w-5 h-5 text-green-600" />
+                        )}
                       </div>
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs text-slate-500">
-                          {new Date(transfer.created_at).toLocaleDateString('fr-FR')}
-                        </p>
-                        <Badge variant="outline" className={`text-xs ${statusInfo.color} ${statusInfo.bg} border-0`}>
-                          {statusInfo.label}
-                        </Badge>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="font-semibold text-slate-900">{getTransferType(transfer)}</p>
+                          <p className="font-bold text-slate-900">
+                            {formatCurrency(transfer.converted_amount, transfer.to_currency)}
+                          </p>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs text-slate-500">
+                            {new Date(transfer.created_at).toLocaleDateString('fr-FR')}
+                          </p>
+                          <Badge variant="outline" className={`text-xs ${statusInfo.color} ${statusInfo.bg} border-0`}>
+                            {statusInfo.label}
+                          </Badge>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </Card>
+                  </Card>
+                </AnimatedItem>
               );
             })}
-          </div>
+          </AnimatedList>
         ) : (
-          <Card className="p-8 text-center">
-            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <History className="w-8 h-8 text-slate-400" />
-            </div>
-            <p className="text-slate-600 mb-4">Aucun transfert pour le moment</p>
-            <Link to="/transfer">
-              <Button>Faire un transfert</Button>
-            </Link>
-          </Card>
+          <AnimatedElement delay={3}>
+            <Card className="p-8 text-center">
+              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <History className="w-8 h-8 text-slate-400" />
+              </div>
+              <p className="text-slate-600 mb-4">Aucun transfert pour le moment</p>
+              <Link to="/transfer">
+                <Button className="hover:scale-105 transition-transform">Faire un transfert</Button>
+              </Link>
+            </Card>
+          </AnimatedElement>
         )}
       </div>
     </div>
