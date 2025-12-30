@@ -176,3 +176,55 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* Bounce animation for buttons */
+@keyframes bounce-click {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(0.92);
+  }
+  60% {
+    transform: scale(1.02);
+  }
+  80% {
+    transform: scale(0.98);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.btn-bounce {
+  transition: transform 0.15s ease-out;
+}
+
+.btn-bounce:active {
+  animation: bounce-click 0.3s ease-out;
+}
+
+/* Hover scale effect */
+.hover-scale {
+  @apply transition-transform duration-200;
+}
+
+.hover-scale:hover {
+  transform: scale(1.02);
+}
+
+/* Story link underline animation */
+.story-link {
+  @apply relative inline-block;
+}
+
+.story-link::after {
+  content: '';
+  @apply absolute w-full h-0.5 bottom-0 left-0 bg-primary origin-bottom-right transition-transform duration-300;
+  transform: scaleX(0);
+}
+
+.story-link:hover::after {
+  transform: scaleX(1);
+  transform-origin: bottom left;
+}

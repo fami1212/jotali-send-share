@@ -14,6 +14,56 @@ import { useAuth } from '@/contexts/AuthContext';
 import AddRecipientDialog from './AddRecipientDialog';
 import TransferSuccessAnimation from './TransferSuccessAnimation';
 
+// Step transition variants
+const stepVariants = {
+  initial: { opacity: 0, x: 50, scale: 0.98 },
+  animate: { 
+    opacity: 1, 
+    x: 0, 
+    scale: 1,
+    transition: { 
+      type: "spring" as const,
+      stiffness: 300,
+      damping: 30,
+      staggerChildren: 0.1
+    }
+  },
+  exit: { 
+    opacity: 0, 
+    x: -50, 
+    scale: 0.98,
+    transition: { duration: 0.2 }
+  }
+};
+
+// Element animation variants for staggering
+const itemVariants = {
+  initial: { opacity: 0, y: 20 },
+  animate: { 
+    opacity: 1, 
+    y: 0,
+    transition: { 
+      type: "spring" as const,
+      stiffness: 400,
+      damping: 25
+    }
+  }
+};
+
+// Card hover animation
+const cardHoverVariants = {
+  rest: { scale: 1 },
+  hover: { 
+    scale: 1.02,
+    transition: { 
+      type: "spring" as const,
+      stiffness: 400,
+      damping: 20
+    }
+  },
+  tap: { scale: 0.98 }
+};
+
 interface Recipient {
   id: string;
   name: string;
@@ -230,86 +280,129 @@ const ModernTransferForm = () => {
           {step === 1 && (
             <motion.div
               key="step1"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
+              variants={stepVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
               className="space-y-6"
             >
-              <div className="text-center mb-8">
+              <motion.div variants={itemVariants} className="text-center mb-8">
                 <h2 className="text-2xl font-bold text-slate-900 mb-2">Que souhaitez-vous faire ?</h2>
                 <p className="text-slate-500">Choisissez le type d'opération</p>
-              </div>
+              </motion.div>
 
               <div className="space-y-4">
-                <Card
-                  className={`p-6 cursor-pointer transition-all border-2 ${
-                    conversionType === 'mad_to_cfa' 
-                      ? 'border-primary bg-primary/5 shadow-lg scale-[1.02]' 
-                      : 'border-slate-200 hover:border-primary/50 hover:shadow'
-                  }`}
-                  onClick={() => {
-                    setConversionType('mad_to_cfa');
-                    setFromCurrency('MAD');
-                    setToCurrency('CFA');
-                    setTransferMethod('');
-                    setSelectedRecipient(null);
-                  }}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg">
-                      <ArrowRight className="w-7 h-7 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-bold text-slate-900">Envoyer de l'argent</h3>
-                      <p className="text-sm text-slate-500">Maroc → Afrique</p>
-                      <p className="text-xs text-primary font-semibold mt-1">1 DHS = 60 CFA</p>
-                    </div>
-                    {conversionType === 'mad_to_cfa' && (
-                      <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center shadow">
-                        <Check className="w-4 h-4 text-white" />
+                <motion.div variants={itemVariants}>
+                  <motion.div
+                    variants={cardHoverVariants}
+                    initial="rest"
+                    whileHover="hover"
+                    whileTap="tap"
+                  >
+                    <Card
+                      className={`p-6 cursor-pointer transition-all border-2 ${
+                        conversionType === 'mad_to_cfa' 
+                          ? 'border-primary bg-primary/5 shadow-lg' 
+                          : 'border-slate-200 hover:border-primary/50 hover:shadow'
+                      }`}
+                      onClick={() => {
+                        setConversionType('mad_to_cfa');
+                        setFromCurrency('MAD');
+                        setToCurrency('CFA');
+                        setTransferMethod('');
+                        setSelectedRecipient(null);
+                      }}
+                    >
+                      <div className="flex items-center gap-4">
+                        <motion.div 
+                          className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg"
+                          animate={conversionType === 'mad_to_cfa' ? { rotate: [0, -5, 5, 0] } : {}}
+                          transition={{ duration: 0.3 }}
+                        >
+                          <ArrowRight className="w-7 h-7 text-white" />
+                        </motion.div>
+                        <div className="flex-1">
+                          <h3 className="text-lg font-bold text-slate-900">Envoyer de l'argent</h3>
+                          <p className="text-sm text-slate-500">Maroc → Afrique</p>
+                          <p className="text-xs text-primary font-semibold mt-1">1 DHS = 60 CFA</p>
+                        </div>
+                        <AnimatePresence>
+                          {conversionType === 'mad_to_cfa' && (
+                            <motion.div 
+                              initial={{ scale: 0, rotate: -180 }}
+                              animate={{ scale: 1, rotate: 0 }}
+                              exit={{ scale: 0, rotate: 180 }}
+                              className="w-7 h-7 rounded-full bg-primary flex items-center justify-center shadow"
+                            >
+                              <Check className="w-4 h-4 text-white" />
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
-                    )}
-                  </div>
-                </Card>
+                    </Card>
+                  </motion.div>
+                </motion.div>
 
-                <Card
-                  className={`p-6 cursor-pointer transition-all border-2 ${
-                    conversionType === 'cfa_to_mad' 
-                      ? 'border-primary bg-primary/5 shadow-lg scale-[1.02]' 
-                      : 'border-slate-200 hover:border-primary/50 hover:shadow'
-                  }`}
-                  onClick={() => {
-                    setConversionType('cfa_to_mad');
-                    setFromCurrency('CFA');
-                    setToCurrency('MAD');
-                    setTransferMethod('');
-                    setSelectedRecipient(null);
-                  }}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg">
-                      <ArrowLeft className="w-7 h-7 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-bold text-slate-900">Retirer de l'argent</h3>
-                      <p className="text-sm text-slate-500">Afrique → Maroc</p>
-                      <p className="text-xs text-green-600 font-semibold mt-1">1 DHS = 62,5 CFA (frais inclus)</p>
-                    </div>
-                    {conversionType === 'cfa_to_mad' && (
-                      <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center shadow">
-                        <Check className="w-4 h-4 text-white" />
+                <motion.div variants={itemVariants}>
+                  <motion.div
+                    variants={cardHoverVariants}
+                    initial="rest"
+                    whileHover="hover"
+                    whileTap="tap"
+                  >
+                    <Card
+                      className={`p-6 cursor-pointer transition-all border-2 ${
+                        conversionType === 'cfa_to_mad' 
+                          ? 'border-primary bg-primary/5 shadow-lg' 
+                          : 'border-slate-200 hover:border-primary/50 hover:shadow'
+                      }`}
+                      onClick={() => {
+                        setConversionType('cfa_to_mad');
+                        setFromCurrency('CFA');
+                        setToCurrency('MAD');
+                        setTransferMethod('');
+                        setSelectedRecipient(null);
+                      }}
+                    >
+                      <div className="flex items-center gap-4">
+                        <motion.div 
+                          className="w-14 h-14 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg"
+                          animate={conversionType === 'cfa_to_mad' ? { rotate: [0, 5, -5, 0] } : {}}
+                          transition={{ duration: 0.3 }}
+                        >
+                          <ArrowLeft className="w-7 h-7 text-white" />
+                        </motion.div>
+                        <div className="flex-1">
+                          <h3 className="text-lg font-bold text-slate-900">Retirer de l'argent</h3>
+                          <p className="text-sm text-slate-500">Afrique → Maroc</p>
+                          <p className="text-xs text-green-600 font-semibold mt-1">1 DHS = 62,5 CFA (frais inclus)</p>
+                        </div>
+                        <AnimatePresence>
+                          {conversionType === 'cfa_to_mad' && (
+                            <motion.div 
+                              initial={{ scale: 0, rotate: -180 }}
+                              animate={{ scale: 1, rotate: 0 }}
+                              exit={{ scale: 0, rotate: 180 }}
+                              className="w-7 h-7 rounded-full bg-primary flex items-center justify-center shadow"
+                            >
+                              <Check className="w-4 h-4 text-white" />
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
-                    )}
-                  </div>
-                </Card>
+                    </Card>
+                  </motion.div>
+                </motion.div>
               </div>
 
-              <Button 
-                className="w-full h-14 text-lg font-semibold rounded-2xl mt-8"
-                onClick={() => setStep(2)}
-              >
-                Continuer
-              </Button>
+              <motion.div variants={itemVariants}>
+                <Button 
+                  className="w-full h-14 text-lg font-semibold rounded-2xl mt-8"
+                  onClick={() => setStep(2)}
+                >
+                  Continuer
+                </Button>
+              </motion.div>
             </motion.div>
           )}
 
@@ -317,12 +410,13 @@ const ModernTransferForm = () => {
           {step === 2 && (
             <motion.div
               key="step2"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
+              variants={stepVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
               className="space-y-6"
             >
-              <div className="text-center mb-6">
+              <motion.div variants={itemVariants} className="text-center mb-6">
                 <h2 className="text-xl font-bold text-slate-900 mb-1">
                   {conversionType === 'mad_to_cfa' ? 'Envoi d\'argent' : 'Retrait d\'argent'}
                 </h2>
@@ -331,67 +425,98 @@ const ModernTransferForm = () => {
                     ? 'Combien votre bénéficiaire doit recevoir ?' 
                     : 'Combien souhaitez-vous recevoir au Maroc ?'}
                 </p>
-              </div>
+              </motion.div>
 
               {/* Amount Input */}
-              <Card className="p-6 border-2 border-slate-200 rounded-2xl">
-                <div className="space-y-4">
-                  <div>
-                    <Label className="text-sm font-semibold text-slate-700">
-                      {conversionType === 'mad_to_cfa' 
-                        ? '💰 Montant que le bénéficiaire recevra' 
-                        : '💰 Montant que vous recevrez'}
-                    </Label>
-                    <div className="flex items-center gap-3 mt-2">
-                      <Input
-                        type="number"
-                        value={receiveAmount}
-                        onChange={(e) => setReceiveAmount(e.target.value)}
-                        placeholder="Ex: 10000"
-                        className="text-2xl h-14 font-bold border-2 text-center rounded-xl focus:border-primary"
-                      />
-                      <div className="px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-bold text-lg min-w-[80px] text-center shadow">
-                        {toCurrency}
+              <motion.div variants={itemVariants}>
+                <Card className="p-6 border-2 border-slate-200 rounded-2xl">
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-sm font-semibold text-slate-700">
+                        {conversionType === 'mad_to_cfa' 
+                          ? '💰 Montant que le bénéficiaire recevra' 
+                          : '💰 Montant que vous recevrez'}
+                      </Label>
+                      <div className="flex items-center gap-3 mt-2">
+                        <Input
+                          type="number"
+                          value={receiveAmount}
+                          onChange={(e) => setReceiveAmount(e.target.value)}
+                          placeholder="Ex: 10000"
+                          className="text-2xl h-14 font-bold border-2 text-center rounded-xl focus:border-primary"
+                        />
+                        <motion.div 
+                          className="px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-bold text-lg min-w-[80px] text-center shadow"
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          {toCurrency}
+                        </motion.div>
                       </div>
                     </div>
+
+                    <AnimatePresence>
+                      {sendAmount > 0 && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ type: "spring" as const, stiffness: 300, damping: 30 }}
+                        >
+                          <div className="flex items-center justify-center py-2">
+                            <motion.div 
+                              className="w-10 h-10 rounded-full bg-gradient-to-r from-primary to-purple-500 flex items-center justify-center shadow"
+                              animate={{ rotate: [0, 360] }}
+                              transition={{ duration: 0.5, ease: "easeOut" }}
+                            >
+                              <ArrowRight className="w-5 h-5 text-white rotate-90" />
+                            </motion.div>
+                          </div>
+
+                          <div>
+                            <Label className="text-sm font-semibold text-slate-700">
+                              {conversionType === 'mad_to_cfa' ? '📤 Vous devez envoyer' : '📤 Vous devez envoyer'}
+                            </Label>
+                            <div className="flex items-center gap-3 mt-2">
+                              <motion.div 
+                                className="flex-1 text-2xl h-14 font-bold border-2 rounded-xl bg-primary/10 border-primary/30 flex items-center justify-center text-primary"
+                                initial={{ scale: 0.8 }}
+                                animate={{ scale: 1 }}
+                                transition={{ type: "spring" as const, stiffness: 500, damping: 25 }}
+                              >
+                                {formatNumber(sendAmount)}
+                              </motion.div>
+                              <motion.div 
+                                className="px-4 py-3 bg-gradient-to-r from-primary to-blue-600 text-white rounded-xl font-bold text-lg min-w-[80px] text-center shadow"
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                              >
+                                {fromCurrency}
+                              </motion.div>
+                            </div>
+                          </div>
+
+                          <motion.div 
+                            className="pt-3 border-t border-slate-100 text-center"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.2 }}
+                          >
+                            <span className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-full text-sm font-medium text-slate-600">
+                              📊 Taux: 1 DHS = {conversionType === 'mad_to_cfa' ? MAD_TO_CFA_RATE : CFA_TO_MAD_RATE} CFA
+                              {conversionType === 'cfa_to_mad' && <span className="text-green-600">(frais inclus)</span>}
+                            </span>
+                          </motion.div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
-
-                  {sendAmount > 0 && (
-                    <>
-                      <div className="flex items-center justify-center py-2">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-r from-primary to-purple-500 flex items-center justify-center shadow">
-                          <ArrowRight className="w-5 h-5 text-white rotate-90" />
-                        </div>
-                      </div>
-
-                      <div>
-                        <Label className="text-sm font-semibold text-slate-700">
-                          {conversionType === 'mad_to_cfa' ? '📤 Vous devez envoyer' : '📤 Vous devez envoyer'}
-                        </Label>
-                        <div className="flex items-center gap-3 mt-2">
-                          <div className="flex-1 text-2xl h-14 font-bold border-2 rounded-xl bg-primary/10 border-primary/30 flex items-center justify-center text-primary">
-                            {formatNumber(sendAmount)}
-                          </div>
-                          <div className="px-4 py-3 bg-gradient-to-r from-primary to-blue-600 text-white rounded-xl font-bold text-lg min-w-[80px] text-center shadow">
-                            {fromCurrency}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="pt-3 border-t border-slate-100 text-center">
-                        <span className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-full text-sm font-medium text-slate-600">
-                          📊 Taux: 1 DHS = {conversionType === 'mad_to_cfa' ? MAD_TO_CFA_RATE : CFA_TO_MAD_RATE} CFA
-                          {conversionType === 'cfa_to_mad' && <span className="text-green-600">(frais inclus)</span>}
-                        </span>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </Card>
+                </Card>
+              </motion.div>
 
               {/* Beneficiary Selection (only for MAD→CFA) */}
               {conversionType === 'mad_to_cfa' && (
-                <div className="space-y-3">
+                <motion.div variants={itemVariants} className="space-y-3">
                   <Label className="text-base font-semibold text-slate-800">Bénéficiaire</Label>
                   <Select 
                     value={selectedRecipient?.id || ""} 
@@ -424,29 +549,45 @@ const ModernTransferForm = () => {
                     Ajouter un bénéficiaire
                   </Button>
 
-                  {selectedRecipient && (
-                    <Card className="p-4 bg-green-50 border-green-200">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
-                          <Check className="w-5 h-5 text-white" />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-green-900">{selectedRecipient.name}</p>
-                          <p className="text-sm text-green-700">{selectedRecipient.country} • {selectedRecipient.phone}</p>
-                        </div>
-                      </div>
-                    </Card>
-                  )}
-                </div>
+                  <AnimatePresence>
+                    {selectedRecipient && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                        transition={{ type: "spring" as const, stiffness: 400, damping: 25 }}
+                      >
+                        <Card className="p-4 bg-green-50 border-green-200">
+                          <div className="flex items-center gap-3">
+                            <motion.div 
+                              className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center"
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              transition={{ type: "spring" as const, stiffness: 500, damping: 20 }}
+                            >
+                              <Check className="w-5 h-5 text-white" />
+                            </motion.div>
+                            <div>
+                              <p className="font-semibold text-green-900">{selectedRecipient.name}</p>
+                              <p className="text-sm text-green-700">{selectedRecipient.country} • {selectedRecipient.phone}</p>
+                            </div>
+                          </div>
+                        </Card>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
               )}
 
-              <Button 
-                className="w-full h-14 text-lg font-semibold rounded-2xl"
-                onClick={() => setStep(3)}
-                disabled={!canProceedStep2()}
-              >
-                Continuer
-              </Button>
+              <motion.div variants={itemVariants}>
+                <Button 
+                  className="w-full h-14 text-lg font-semibold rounded-2xl"
+                  onClick={() => setStep(3)}
+                  disabled={!canProceedStep2()}
+                >
+                  Continuer
+                </Button>
+              </motion.div>
             </motion.div>
           )}
 
@@ -454,58 +595,95 @@ const ModernTransferForm = () => {
           {step === 3 && (
             <motion.div
               key="step3"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
+              variants={stepVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
               className="space-y-6"
             >
-              <div className="text-center mb-6">
+              <motion.div variants={itemVariants} className="text-center mb-6">
                 <h2 className="text-xl font-bold text-slate-900 mb-1">Récapitulatif</h2>
                 <p className="text-slate-500 text-sm">Vérifiez les détails de votre transfert</p>
-              </div>
+              </motion.div>
 
-              <Card className="p-6 bg-slate-900 text-white rounded-2xl">
-                <div className="space-y-4">
-                  <div className="text-center pb-4 border-b border-slate-700">
-                    <p className="text-slate-400 text-sm mb-1">Vous envoyez</p>
-                    <p className="text-3xl font-bold">{formatNumber(sendAmount)} {fromCurrency}</p>
-                  </div>
+              <motion.div variants={itemVariants}>
+                <Card className="p-6 bg-slate-900 text-white rounded-2xl">
+                  <div className="space-y-4">
+                    <motion.div 
+                      className="text-center pb-4 border-b border-slate-700"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 }}
+                    >
+                      <p className="text-slate-400 text-sm mb-1">Vous envoyez</p>
+                      <motion.p 
+                        className="text-3xl font-bold"
+                        initial={{ scale: 0.8 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: "spring" as const, stiffness: 400, damping: 20, delay: 0.15 }}
+                      >
+                        {formatNumber(sendAmount)} {fromCurrency}
+                      </motion.p>
+                    </motion.div>
 
-                  <div className="text-center pb-4 border-b border-slate-700">
-                    <p className="text-slate-400 text-sm mb-1">
-                      {conversionType === 'mad_to_cfa' ? 'Le bénéficiaire reçoit' : 'Vous recevez'}
-                    </p>
-                    <p className="text-3xl font-bold text-green-400">{formatNumber(parseFloat(receiveAmount))} {toCurrency}</p>
-                  </div>
+                    <motion.div 
+                      className="text-center pb-4 border-b border-slate-700"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.2 }}
+                    >
+                      <p className="text-slate-400 text-sm mb-1">
+                        {conversionType === 'mad_to_cfa' ? 'Le bénéficiaire reçoit' : 'Vous recevez'}
+                      </p>
+                      <motion.p 
+                        className="text-3xl font-bold text-green-400"
+                        initial={{ scale: 0.8 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: "spring" as const, stiffness: 400, damping: 20, delay: 0.25 }}
+                      >
+                        {formatNumber(parseFloat(receiveAmount))} {toCurrency}
+                      </motion.p>
+                    </motion.div>
 
-                  {conversionType === 'mad_to_cfa' && selectedRecipient && (
-                    <div className="py-4 border-b border-slate-700">
-                      <p className="text-slate-400 text-sm mb-2">Bénéficiaire</p>
-                      <p className="font-semibold text-lg">{selectedRecipient.name}</p>
-                      <p className="text-slate-300 text-sm">{selectedRecipient.country} • {selectedRecipient.phone}</p>
-                      {selectedRecipient.transfer_number && (
-                        <p className="text-slate-400 text-sm mt-1">N° transfert: {selectedRecipient.transfer_number}</p>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Taux de change</span>
-                      <span>1 DHS = {conversionType === 'mad_to_cfa' ? MAD_TO_CFA_RATE : CFA_TO_MAD_RATE} CFA</span>
-                    </div>
-                    {conversionType === 'cfa_to_mad' && (
-                      <div className="flex justify-between text-green-400">
-                        <span>Frais de service</span>
-                        <span>✓ Inclus dans le taux</span>
-                      </div>
+                    {conversionType === 'mad_to_cfa' && selectedRecipient && (
+                      <motion.div 
+                        className="py-4 border-b border-slate-700"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}
+                      >
+                        <p className="text-slate-400 text-sm mb-2">Bénéficiaire</p>
+                        <p className="font-semibold text-lg">{selectedRecipient.name}</p>
+                        <p className="text-slate-300 text-sm">{selectedRecipient.country} • {selectedRecipient.phone}</p>
+                        {selectedRecipient.transfer_number && (
+                          <p className="text-slate-400 text-sm mt-1">N° transfert: {selectedRecipient.transfer_number}</p>
+                        )}
+                      </motion.div>
                     )}
+
+                    <motion.div 
+                      className="space-y-2 text-sm"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.35 }}
+                    >
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Taux de change</span>
+                        <span>1 DHS = {conversionType === 'mad_to_cfa' ? MAD_TO_CFA_RATE : CFA_TO_MAD_RATE} CFA</span>
+                      </div>
+                      {conversionType === 'cfa_to_mad' && (
+                        <div className="flex justify-between text-green-400">
+                          <span>Frais de service</span>
+                          <span>✓ Inclus dans le taux</span>
+                        </div>
+                      )}
+                    </motion.div>
                   </div>
-                </div>
-              </Card>
+                </Card>
+              </motion.div>
 
               {/* Notes */}
-              <div className="space-y-2">
+              <motion.div variants={itemVariants} className="space-y-2">
                 <Label className="text-sm font-medium text-slate-600">Notes (optionnel)</Label>
                 <Textarea
                   value={notes}
@@ -514,14 +692,16 @@ const ModernTransferForm = () => {
                   className="resize-none border-2"
                   rows={2}
                 />
-              </div>
+              </motion.div>
 
-              <Button 
-                className="w-full h-14 text-lg font-semibold rounded-2xl"
-                onClick={() => setStep(conversionType === 'mad_to_cfa' ? 4 : 4)}
-              >
-                Choisir l'opérateur de paiement
-              </Button>
+              <motion.div variants={itemVariants}>
+                <Button 
+                  className="w-full h-14 text-lg font-semibold rounded-2xl"
+                  onClick={() => setStep(conversionType === 'mad_to_cfa' ? 4 : 4)}
+                >
+                  Choisir l'opérateur de paiement
+                </Button>
+              </motion.div>
             </motion.div>
           )}
 
@@ -529,47 +709,50 @@ const ModernTransferForm = () => {
           {step === 4 && (
             <motion.div
               key="step4"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
+              variants={stepVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
               className="space-y-6"
             >
-              <div className="text-center mb-4">
+              <motion.div variants={itemVariants} className="text-center mb-4">
                 <h2 className="text-xl font-bold text-slate-900 mb-1">Mode de paiement</h2>
                 <p className="text-slate-500 text-sm">Sélectionnez votre opérateur</p>
-              </div>
+              </motion.div>
 
               {/* Fee explanation for MAD→CFA only */}
               {conversionType === 'mad_to_cfa' && (
-                <Card className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200 rounded-xl">
-                  <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4" />
-                    Informations sur les frais
-                  </h4>
-                  <div className="space-y-3 text-sm">
-                    <div className="flex items-center justify-between p-2 bg-white/80 rounded-lg">
-                      <span className="text-slate-700 font-medium">Taux de change</span>
-                      <span className="text-primary font-bold">1 DHS = 60 CFA</span>
-                    </div>
-                    <div className="border-t border-blue-200 pt-3">
-                      <p className="font-medium text-blue-900 mb-2">Frais selon le pays :</p>
-                      <div className="grid gap-2">
-                        <div className="flex justify-between items-center p-2 bg-green-50 rounded-lg border border-green-200">
-                          <span className="text-green-800">🇸🇳 Sénégal</span>
-                          <span className="text-green-700 font-semibold">1% (Wave/OM)</span>
-                        </div>
-                        <div className="flex justify-between items-center p-2 bg-amber-50 rounded-lg border border-amber-200">
-                          <span className="text-amber-800">🌍 Autres pays</span>
-                          <span className="text-amber-700 font-semibold">1.5% (Wave/OM)</span>
-                        </div>
-                        <div className="flex justify-between items-center p-2 bg-blue-50 rounded-lg border border-blue-200">
-                          <span className="text-blue-800">🏦 Virement bancaire</span>
-                          <span className="text-blue-700 font-semibold">0% gratuit</span>
+                <motion.div variants={itemVariants}>
+                  <Card className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200 rounded-xl">
+                    <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4" />
+                      Informations sur les frais
+                    </h4>
+                    <div className="space-y-3 text-sm">
+                      <div className="flex items-center justify-between p-2 bg-white/80 rounded-lg">
+                        <span className="text-slate-700 font-medium">Taux de change</span>
+                        <span className="text-primary font-bold">1 DHS = 60 CFA</span>
+                      </div>
+                      <div className="border-t border-blue-200 pt-3">
+                        <p className="font-medium text-blue-900 mb-2">Frais selon le pays :</p>
+                        <div className="grid gap-2">
+                          <div className="flex justify-between items-center p-2 bg-green-50 rounded-lg border border-green-200">
+                            <span className="text-green-800">🇸🇳 Sénégal</span>
+                            <span className="text-green-700 font-semibold">1% (Wave/OM)</span>
+                          </div>
+                          <div className="flex justify-between items-center p-2 bg-amber-50 rounded-lg border border-amber-200">
+                            <span className="text-amber-800">🌍 Autres pays</span>
+                            <span className="text-amber-700 font-semibold">1.5% (Wave/OM)</span>
+                          </div>
+                          <div className="flex justify-between items-center p-2 bg-blue-50 rounded-lg border border-blue-200">
+                            <span className="text-blue-800">🏦 Virement bancaire</span>
+                            <span className="text-blue-700 font-semibold">0% gratuit</span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </Card>
+                  </Card>
+                </motion.div>
               )}
 
               {/* Payment methods */}
@@ -578,98 +761,159 @@ const ModernTransferForm = () => {
                   { id: 'wave', label: 'Wave', icon: Smartphone, color: 'bg-gradient-to-br from-yellow-400 to-yellow-500' },
                   { id: 'orange_money', label: 'Orange Money', icon: Smartphone, color: 'bg-gradient-to-br from-orange-400 to-orange-500' },
                   { id: 'bank_transfer', label: 'Virement bancaire', icon: Building2, color: 'bg-gradient-to-br from-blue-500 to-indigo-500' }
-                ].map((method) => (
-                  <Card
+                ].map((method, index) => (
+                  <motion.div 
                     key={method.id}
-                    className={`p-4 cursor-pointer transition-all border-2 ${
-                      transferMethod === method.id 
-                        ? 'border-primary bg-primary/5 shadow-lg scale-[1.02]' 
-                        : 'border-slate-200 hover:border-slate-300 hover:shadow'
-                    }`}
-                    onClick={() => setTransferMethod(method.id)}
+                    variants={itemVariants}
+                    custom={index}
                   >
-                    <div className="flex items-center gap-4">
-                      <div className={`w-12 h-12 ${method.color} rounded-xl flex items-center justify-center shadow-md`}>
-                        <method.icon className="w-6 h-6 text-white" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-semibold text-slate-900">{method.label}</p>
-                      </div>
-                      {transferMethod === method.id && (
-                        <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center shadow">
-                          <Check className="w-4 h-4 text-white" />
+                    <motion.div
+                      variants={cardHoverVariants}
+                      initial="rest"
+                      whileHover="hover"
+                      whileTap="tap"
+                    >
+                      <Card
+                        className={`p-4 cursor-pointer transition-all border-2 ${
+                          transferMethod === method.id 
+                            ? 'border-primary bg-primary/5 shadow-lg' 
+                            : 'border-slate-200 hover:border-slate-300 hover:shadow'
+                        }`}
+                        onClick={() => setTransferMethod(method.id)}
+                      >
+                        <div className="flex items-center gap-4">
+                          <motion.div 
+                            className={`w-12 h-12 ${method.color} rounded-xl flex items-center justify-center shadow-md`}
+                            animate={transferMethod === method.id ? { scale: [1, 1.1, 1] } : {}}
+                            transition={{ duration: 0.3 }}
+                          >
+                            <method.icon className="w-6 h-6 text-white" />
+                          </motion.div>
+                          <div className="flex-1">
+                            <p className="font-semibold text-slate-900">{method.label}</p>
+                          </div>
+                          <AnimatePresence>
+                            {transferMethod === method.id && (
+                              <motion.div 
+                                initial={{ scale: 0, rotate: -180 }}
+                                animate={{ scale: 1, rotate: 0 }}
+                                exit={{ scale: 0, rotate: 180 }}
+                                className="w-6 h-6 rounded-full bg-primary flex items-center justify-center shadow"
+                              >
+                                <Check className="w-4 h-4 text-white" />
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                         </div>
-                      )}
-                    </div>
-                  </Card>
+                      </Card>
+                    </motion.div>
+                  </motion.div>
                 ))}
               </div>
 
               {/* Bank RIBs */}
-              {transferMethod === 'bank_transfer' && (
-                <Card className="p-4 bg-blue-50 border-blue-200 rounded-xl">
-                  <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
-                    <Building2 className="w-4 h-4" />
-                    Nos RIB bancaires
-                  </h4>
-                  <div className="space-y-2 text-sm">
-                    {[
-                      { name: "Crédit du Maroc", rib: "021825000024400106532425" },
-                      { name: "CIH", rib: "230825260774421100590063" },
-                      { name: "Banque Populaire", rib: "181825211113968204000937" },
-                      { name: "AttijariWafa Bank", rib: "007810000462200030523754" },
-                      { name: "Société Générale", rib: "022780000760003747072074" },
-                      { name: "BMCE", rib: "011825000010200000210393" }
-                    ].map((bank) => (
-                      <div key={bank.rib} className="flex justify-between p-2 bg-white rounded-lg">
-                        <span className="font-medium text-slate-700">{bank.name}</span>
-                        <span className="font-mono text-xs text-slate-500">{bank.rib}</span>
+              <AnimatePresence>
+                {transferMethod === 'bank_transfer' && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ type: "spring" as const, stiffness: 300, damping: 30 }}
+                  >
+                    <Card className="p-4 bg-blue-50 border-blue-200 rounded-xl">
+                      <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                        <Building2 className="w-4 h-4" />
+                        Nos RIB bancaires
+                      </h4>
+                      <div className="space-y-2 text-sm">
+                        {[
+                          { name: "Crédit du Maroc", rib: "021825000024400106532425" },
+                          { name: "CIH", rib: "230825260774421100590063" },
+                          { name: "Banque Populaire", rib: "181825211113968204000937" },
+                          { name: "AttijariWafa Bank", rib: "007810000462200030523754" },
+                          { name: "Société Générale", rib: "022780000760003747072074" },
+                          { name: "BMCE", rib: "011825000010200000210393" }
+                        ].map((bank, index) => (
+                          <motion.div 
+                            key={bank.rib} 
+                            className="flex justify-between p-2 bg-white rounded-lg"
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                          >
+                            <span className="font-medium text-slate-700">{bank.name}</span>
+                            <span className="font-mono text-xs text-slate-500">{bank.rib}</span>
+                          </motion.div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                </Card>
-              )}
+                    </Card>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Final Summary with Fees */}
-              {transferMethod && (
-                <Card className="p-4 bg-gradient-to-br from-slate-800 to-slate-900 text-white rounded-xl shadow-lg">
-                  <h4 className="font-semibold mb-3 flex items-center gap-2">
-                    💳 Total à payer
-                  </h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-slate-300">Montant de base</span>
-                      <span>{formatNumber(sendAmount)} {fromCurrency}</span>
-                    </div>
-                    {conversionType === 'mad_to_cfa' && (
-                      <div className="flex justify-between">
-                        <span className="text-slate-300">
-                          Frais {transferMethod === 'bank_transfer' ? '(gratuit)' : `(${isSenegal(selectedRecipient?.country) ? '1%' : '1.5%'})`}
-                        </span>
-                        <span className={fees === 0 ? 'text-green-400' : ''}>{formatNumber(fees)} {fromCurrency}</span>
+              <AnimatePresence>
+                {transferMethod && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ type: "spring" as const, stiffness: 400, damping: 25 }}
+                  >
+                    <Card className="p-4 bg-gradient-to-br from-slate-800 to-slate-900 text-white rounded-xl shadow-lg">
+                      <h4 className="font-semibold mb-3 flex items-center gap-2">
+                        💳 Total à payer
+                      </h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-slate-300">Montant de base</span>
+                          <span>{formatNumber(sendAmount)} {fromCurrency}</span>
+                        </div>
+                        {conversionType === 'mad_to_cfa' && (
+                          <div className="flex justify-between">
+                            <span className="text-slate-300">
+                              Frais {transferMethod === 'bank_transfer' ? '(gratuit)' : `(${isSenegal(selectedRecipient?.country) ? '1%' : '1.5%'})`}
+                            </span>
+                            <span className={fees === 0 ? 'text-green-400' : ''}>{formatNumber(fees)} {fromCurrency}</span>
+                          </div>
+                        )}
+                        {conversionType === 'cfa_to_mad' && (
+                          <div className="flex justify-between text-green-400">
+                            <span>Frais de service</span>
+                            <span>✓ Inclus</span>
+                          </div>
+                        )}
+                        <motion.div 
+                          className="flex justify-between pt-3 border-t border-slate-600 font-bold text-lg"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 0.2 }}
+                        >
+                          <span>Total</span>
+                          <motion.span 
+                            className="text-green-400"
+                            initial={{ scale: 0.8 }}
+                            animate={{ scale: 1 }}
+                            transition={{ type: "spring" as const, stiffness: 500, damping: 20, delay: 0.3 }}
+                          >
+                            {formatNumber(total)} {fromCurrency}
+                          </motion.span>
+                        </motion.div>
                       </div>
-                    )}
-                    {conversionType === 'cfa_to_mad' && (
-                      <div className="flex justify-between text-green-400">
-                        <span>Frais de service</span>
-                        <span>✓ Inclus</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between pt-3 border-t border-slate-600 font-bold text-lg">
-                      <span>Total</span>
-                      <span className="text-green-400">{formatNumber(total)} {fromCurrency}</span>
-                    </div>
-                  </div>
-                </Card>
-              )}
+                    </Card>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
-              <Button 
-                className="w-full h-14 text-lg font-semibold rounded-2xl shadow-lg"
-                onClick={handleSubmit}
-                disabled={isSubmitting || !transferMethod}
-              >
-                {isSubmitting ? "Traitement..." : "✓ Confirmer le transfert"}
-              </Button>
+              <motion.div variants={itemVariants}>
+                <Button 
+                  className="w-full h-14 text-lg font-semibold rounded-2xl shadow-lg"
+                  onClick={handleSubmit}
+                  disabled={isSubmitting || !transferMethod}
+                >
+                  {isSubmitting ? "Traitement..." : "✓ Confirmer le transfert"}
+                </Button>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
